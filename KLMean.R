@@ -252,7 +252,7 @@ graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I
 # Addition of O makes things messy.. perhas still a nice illustration?..
 graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I][K|D:M][L|K:H][M|N:O][N|A][O|N]"), layout="dot", highlight=list(nodes=c("B", "C", "D", "K", "H", "F", "M"), fill=c("grey90","grey90","grey50","grey90","grey90","grey90","grey90"), col=c("black", "black", "black", "black", "black", "black", "black")), main = "MB(D)")
 
-# 
+
 # # Plot 2 node network for equivalence
 # graphviz.plot(model2network("[A][B|A]"), layout = "fdp")
 # graphviz.plot(model2network("[A|B][B]"))
