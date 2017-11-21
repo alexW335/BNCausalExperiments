@@ -8,6 +8,7 @@ library(RColorBrewer)
 library(gridExtra)
 library(Rgraphviz)
 
+
 # For some reason these variables need to be instantiated outside 
 # the function in the global scope.
 a.cur.lv = "a"
@@ -206,7 +207,12 @@ ggplot(res.data, aes(x=`Samples`, y=jitter(`Mean.Distance`), color=log(`KL.Diver
 plot(KL.Divergence ~ jitter(Mean.Distance), data = res.data, pch ="+", xlab = "Mean Edit Distance", ylab = "Kullback–Leibler Divergence")
 kl.dist.lm = lm(`KL.Divergence` ~ `Mean.Distance`, data = res.data)
 abline(kl.dist.lm,lwd=2,col=2)
+
+# Diagnostic plots for Linear model
 summary(kl.dist.lm)
+par(mfrow=c(2,2))
+plot(kl.dist.lm)
+par(mfrow=c(1,1))
 
 ggplot(res.data, aes(x=`Samples`, y=`KL.Divergence`, color=`Mean.Distance`)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
 
@@ -214,22 +220,43 @@ ggplot(res.data[50:1500,], aes(x=`Samples`[50:1500], y=`KL.Divergence`[50:1500],
 kl.sampl.lm = lm(`KL.Divergence`[50:1500] ~ Samples[50:1500], data = res.data)
 summary(kl.sampl.lm)
 
-ggplot(res.data, aes(x=`Samples`, y=log(`Mean.Distance`), color=log(`KL.Divergence`))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+# Diagnostic plots for linear model
+par(mfrow=c(2,2))
+plot(kl.sampl.lm)
+par(mfrow=c(1,1))
 
+ggplot(res.data, aes(x=`Samples`, y=log(`Mean.Distance`), color=log(`KL.Divergence`))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
 plot(jitter(log(`Mean.Distance`)) ~ jitter(Samples), data = res.data, pch = "+", xlab = "Number of Samples", ylab = "log(Mean Edit Distance)")
 
-# Linear model
+# Compare polynomial regression to simple linear regression
+bn.poly.lm = lm(log(`Mean.Distance`) ~ Samples + I(Samples^2), data = res.data)
 bn.lm = lm(log(`Mean.Distance`) ~ Samples, data = res.data)
-summary(bn.lm)
-abline(bn.lm,lwd=2,col=2)
+anova(bn.lm, bn.poly.lm)
 
-plot((d.given.a.actual - ratio.DgivenA) ~ Samples, data = res.data, xlab = "Number of Samples", ylab = "P(D|A) - P*(D|A)")
-abline(0, 0, col = 'red', lwd = 0.5, lty = 3)
+# Polynomial regression it is.
+anova(bn.poly.lm)
+summary(bn.poly.lm)
+abline(bn.poly.lm, lwd=2,col=2)
 
-# Diagnostic plots 
+# Draw quadratic through data
+prd = data.frame(Samples = seq(from = range(res.data$Samples)[1], to = range(res.data$Samples)[2], length.out = length(res.data$Samples)))
+points(predict(bn.poly.lm, newdata=prd), type='l', col='red')
+
+# Diagnostic plots for polynomial regression
 par(mfrow=c(2,2))
-plot(bn.lm)
+plot(bn.poly.lm)
 par(mfrow = c(1,1))
+
+# plot((d.given.a.actual - ratio.DgivenA) ~ Samples, data = res.data, xlab = "Number of Samples", ylab = "P(D|A) - P*(D|A)")
+# abline(0, 0, col = 'red', lwd = 0.5, lty = 3)
+
+
+
+
+
+
+
+
 
 # NOTE DATA STORED HERE
 # write.table(res.data, "fivethousandSamples50Repeat.txt", sep="\t")
