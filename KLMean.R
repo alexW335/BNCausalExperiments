@@ -253,9 +253,21 @@ par(mfrow = c(1,1))
 
 
 
+# POST-STATS-COURSES DATA ANALYSIS
+res.data.high.sampl = res.data[50:1500,]
+res.data.high.sampl = res.data.high.sampl[complete.cases(res.data.high.sampl),]
 
 
 
+plot(Mean.Distance ~ KL.Divergence, data = res.data.high.sampl, pch = '+')
+dist.KL.lm = lm(Samples ~ KL.Divergence*Mean.Distance, data = res.data.high.sampl)
+summary(dist.KL.lm)
+
+cov2cor(cov(res.data.high.sampl$Mean.Distance, res.data.high.sampl$KL.Divergence))
+
+par(mfrow=c(2,2))
+plot(dist.KL.lm)
+par(mfrow=c(1,1))
 
 
 # NOTE DATA STORED HERE
