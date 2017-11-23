@@ -35,7 +35,7 @@ c.cur.lv = "c"
 # however only once as it can be quite expensive to do.
 KLMean = function(bn,
                   num.samples.to.gen,
-                  times.to.repeat = 1000,
+                  times.to.repeat = 1,
                   test.funct = "x2",
                   score.funct = "bde",
                   param.learn.method = "mle"){
@@ -96,6 +96,7 @@ KLMean = function(bn,
     
     # Try using Structural Intervention Distance rather than GED
     
+    sumdist = sumdist + structIntervDist(bn.am, lrnd.am)$sid
     
     # This Loop is where the KL-Divergence is calculated. It involves summing over all possible values of all
     # nodes (other than D), which makes generalisation to other networks difficult.
@@ -121,6 +122,7 @@ KLMean = function(bn,
 
   # Take the average edit distance found, and average KL Divergence 
   # (as they were looped and added to a total)
+  # t = sumdist/times.to.repeat
   t = sumdist/times.to.repeat
   kl = klsum/times.to.repeat
 
@@ -180,13 +182,14 @@ prD = bn.fit.barchart(bn.actual$D, main = "P(D|B,C)")
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
 
-repeat.times = 50
+repeat.times = 15
 min.number.of.observations = 1
-max.num.observations = 5000
+max.num.observations = 500
 
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations))
 colnames(res.data) = c("Samples", "Mean.Distance", "KL.Divergence", "ratio.DgivenA", "ratio.DgivenNA")
 for (i in seq(from = min.number.of.observations, to = max.num.observations)){
+  print(i)
   edit.dist.klmean.pair = KLMean(bn.actual, i, times.to.repeat = repeat.times)
   res.data[i, 2] = edit.dist.klmean.pair[1]
   res.data[i, 3] = edit.dist.klmean.pair[2]
@@ -205,7 +208,7 @@ d.given.a.actual = querygrain(grain.act.a, nodes = c("D"))[[1]][1]
 res.data = res.data[is.finite(rowSums(res.data)),]
 
 # Uncomment the below line if reading the data from a file rather than regenerating.
-res.data = read.table("fivethousandSamples50Repeat.txt", sep="\t")
+# res.data = read.table("fivethousandSamples50Repeat.txt", sep="\t")
 
 low.col = "black"
 high.col = "yellow"
@@ -226,9 +229,9 @@ par(mfrow=c(1,1))
 
 ggplot(res.data, aes(x=`Samples`, y=`KL.Divergence`, color=`Mean.Distance`)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
 
-ggplot(res.data[50:1500,], aes(x=`Samples`[50:1500], y=`KL.Divergence`[50:1500], color=`Mean.Distance`)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
-kl.sampl.lm = lm(`KL.Divergence`[50:1500] ~ Samples[50:1500], data = res.data)
-summary(kl.sampl.lm)
+# ggplot(res.data[50:1500,], aes(x=`Samples`[50:1500], y=`KL.Divergence`[50:1500], color=`Mean.Distance`)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+# kl.sampl.lm = lm(`KL.Divergence`[50:1500] ~ Samples[50:1500], data = res.data)
+# summary(kl.sampl.lm)
 
 # Diagnostic plots for linear model
 par(mfrow=c(2,2))
@@ -246,7 +249,6 @@ anova(bn.lm, bn.poly.lm)
 # Polynomial regression it is.
 anova(bn.poly.lm)
 summary(bn.poly.lm)
-abline(bn.poly.lm, lwd=2,col=2)
 
 # Draw quadratic through data
 prd = data.frame(Samples = seq(from = range(res.data$Samples)[1], to = range(res.data$Samples)[2], length.out = length(res.data$Samples)))
@@ -264,23 +266,23 @@ par(mfrow = c(1,1))
 
 
 # POST-STATS-COURSES DATA ANALYSIS
-res.data.high.sampl = res.data[50:1500,]
-res.data.high.sampl = res.data.high.sampl[complete.cases(res.data.high.sampl),]
-summary(res.data.high.sampl)
+# res.data.high.sampl = res.data[50:1500,]
+# res.data.high.sampl = res.data.high.sampl[complete.cases(res.data.high.sampl),]
+# summary(res.data.high.sampl)
 
 
 
-plot(Mean.Distance ~ KL.Divergence, data = res.data.high.sampl, pch = '+')
-dist.KL.lm = lm(Samples ~ KL.Divergence*Mean.Distance, data = res.data.high.sampl)
-summary(dist.KL.lm)
-
-par(mfrow=c(2,2))
-plot(dist.KL.lm)
-par(mfrow=c(1,1))
-
-
-KL.by.sampl = lm(KL.Divergence ~ Samples, data = res.data.high.sampl)
-summary(KL.by.sampl)
+# plot(Mean.Distance ~ KL.Divergence, data = res.data.high.sampl, pch = '+')
+# dist.KL.lm = lm(Samples ~ KL.Divergence*Mean.Distance, data = res.data.high.sampl)
+# summary(dist.KL.lm)
+# 
+# par(mfrow=c(2,2))
+# plot(dist.KL.lm)
+# par(mfrow=c(1,1))
+# 
+# 
+# KL.by.sampl = lm(KL.Divergence ~ Samples, data = res.data.high.sampl)
+# summary(KL.by.sampl)
 
 # NOTE DATA STORED HERE
 # write.table(res.data, "fivethousandSamples50Repeat.txt", sep="\t")
