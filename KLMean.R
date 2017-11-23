@@ -8,6 +8,13 @@ library(RColorBrewer)
 library(gridExtra)
 library(Rgraphviz)
 
+source("https://bioconductor.org/biocLite.R")
+biocLite("Rgraphviz", lib = 'H:/My Documents/RLIB')
+biocLite("RBGL", lib = 'H:/My Documents/RLIB')
+
+install.packages('SID', lib = 'H:/My Documents/RLIB')
+library(SID)
+
 
 # For some reason these variables need to be instantiated outside 
 # the function in the global scope.
@@ -68,24 +75,27 @@ KLMean = function(bn,
     # original matrix, there has been an edge reversal between those two nodes.
     # Then remove those entries from the adjacency matrices and add one to the reflections
     # counter.
-    sym.check = bn.am - t(lrnd.am)
-    num.reflections = 0
-    for (i in seq(1, nrow(bn.am))) {
-      for (j in seq(1, ncol(bn.am))) {
-        if (bn.am[i, j] == 1 & sym.check[i, j] == 0) {
-          bn.am[i, j] = 0
-          lrnd.am[j, i] = 0
-          num.reflections = num.reflections + 1
-        }
-      }
-    }
+#     sym.check = bn.am - t(lrnd.am)
+#     num.reflections = 0
+#     for (i in seq(1, nrow(bn.am))) {
+#       for (j in seq(1, ncol(bn.am))) {
+#         if (bn.am[i, j] == 1 & sym.check[i, j] == 0) {
+#           bn.am[i, j] = 0
+#           lrnd.am[j, i] = 0
+#           num.reflections = num.reflections + 1
+#         }
+#       }
+#     }
     
     # Additions and subtractions are a lot easier now. Since all reflections have been 
     # removed from the AM, I can simply subtract the learned AM from the original BN's AM and count 
-    # the number of nonzero entries (and edge addition will be a -1, and deletion a 1). 
-    difference.matrix.no.ref = bn.am - lrnd.am
-    mods = Matrix::nnzero(difference.matrix.no.ref)
-    sumdist = sumdist + num.reflections + mods
+#     # the number of nonzero entries (and edge addition will be a -1, and deletion a 1). 
+#     difference.matrix.no.ref = bn.am - lrnd.am
+#     mods = Matrix::nnzero(difference.matrix.no.ref)
+#     sumdist = sumdist + num.reflections + mods
+    
+    # Try using Structural Intervention Distance rather than GED
+    
     
     # This Loop is where the KL-Divergence is calculated. It involves summing over all possible values of all
     # nodes (other than D), which makes generalisation to other networks difficult.
