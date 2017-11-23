@@ -256,6 +256,7 @@ par(mfrow = c(1,1))
 # POST-STATS-COURSES DATA ANALYSIS
 res.data.high.sampl = res.data[50:1500,]
 res.data.high.sampl = res.data.high.sampl[complete.cases(res.data.high.sampl),]
+summary(res.data.high.sampl)
 
 
 
@@ -263,12 +264,13 @@ plot(Mean.Distance ~ KL.Divergence, data = res.data.high.sampl, pch = '+')
 dist.KL.lm = lm(Samples ~ KL.Divergence*Mean.Distance, data = res.data.high.sampl)
 summary(dist.KL.lm)
 
-cov2cor(cov(res.data.high.sampl$Mean.Distance, res.data.high.sampl$KL.Divergence))
-
 par(mfrow=c(2,2))
 plot(dist.KL.lm)
 par(mfrow=c(1,1))
 
+
+KL.by.sampl = lm(KL.Divergence ~ Samples, data = res.data.high.sampl)
+summary(KL.by.sampl)
 
 # NOTE DATA STORED HERE
 # write.table(res.data, "fivethousandSamples50Repeat.txt", sep="\t")
@@ -286,10 +288,9 @@ graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"), highlight = list(nodes=c("G
 # Plot Markov blanket for chapter
 # This is the one from Scutari
 graphviz.plot(model2network("[A][B|A:E][C|A:D][D|A][E|D:F][F|G][G][H|F:I][I][J|H]"), highlight=list(nodes=c("A", "B", "D", "E", "F"), fill=c("grey90", "grey90", "grey90", "grey50", "grey90"), col=c("black", "black","black","black","black")), main="MB(E)")
-# This one is mine
-graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I][K|D:M][L|K:H][M|A]"), layout="dot", highlight=list(nodes=c("B", "C", "D", "K", "H", "F", "M"), fill=c("grey90","grey90","grey50","grey90","grey90","grey90","grey90"), col=c("black", "black", "black", "black", "black", "black", "black")), main = "MB(D)")
-# Addition of O makes things messy.. perhas still a nice illustration?..
-graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I][K|D:M][L|K:H][M|N:O][N|A][O|N]"), layout="dot", highlight=list(nodes=c("B", "C", "D", "K", "H", "F", "M"), fill=c("grey90","grey90","grey50","grey90","grey90","grey90","grey90"), col=c("black", "black", "black", "black", "black", "black", "black")), main = "MB(D)")
+# This one is for the chapter
+graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I][K|D:M][L|K:H][M|N:O][N|A][O|N]"), layout="fdp", highlight=list(nodes=c("B", "C", "D", "K", "H", "F", "M"), fill=c("grey90"), col=c("black")), main = "MB(D)")
+
 
 
 # # Plot 2 node network for equivalence
