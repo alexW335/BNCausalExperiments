@@ -208,85 +208,94 @@ d.given.a.actual = querygrain(grain.act.a, nodes = c("D"))[[1]][1]
 # Will lose some low-sample data points.
 res.data = res.data[is.finite(rowSums(res.data)),]
 
-# Uncomment the below line if reading the data from a file rather than regenerating.
-res.data = read.table("newmetric1000samples25rep.txt", sep="\t")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 low.col = "black"
 high.col = "yellow"
 
 
-# Plot 
-ggplot(res.data, aes(x=`Samples`, y=`Mean.Distance`, color=log(`KL.Divergence`))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+# Uncomment the below line if reading the data from a file rather than regenerating.
+res.data = read.table("newmetric1000samples25rep.txt", sep="\t")
+res.data = res.data[-c(4,5)]
 
-plot(KL.Divergence ~ Mean.Distance, data = res.data, pch ="+", xlab = "Mean Edit Distance", ylab = "Kullback–Leibler Divergence")
-kl.dist.lm = lm(`KL.Divergence` ~ `Mean.Distance`, data = res.data)
+plot(res.data)
+
+# Plot 
+ggplot(res.data, aes(x=Samples, y=Mean.Distance, color=log(KL.Divergence))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+
+
+# SID ~ Samples LM
+res.data.high = res.data[100:length(res.data[,1]),]
+plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
+SID.lm = lm(Mean.Distance ~ Samples, data = res.data.high)
+
+# Diagnostic plots for SID~Samples Linear model
+par(mfrow=c(2,2))
+plot(SID.lm)
+par(mfrow=c(1,1))
+
+# Polynomial Model?
+SID.poly.lm = lm(Mean.Distance ~ poly(Samples, 2), data = res.data.high)
+anova(SID.lm, SID.poly.lm)
+
+# Diagnostic plots for SID~Samples Polynomial model
+par(mfrow=c(2,2))
+plot(SID.poly.lm)
+par(mfrow=c(1,1))
+
+summary(SID.poly.lm)
+
+# Draw quadratic through data
+# NOT WORKING???
+prd = data.frame(Samples = seq(from = range(res.data.high$Samples)[1], to = range(res.data.high$Samples)[2], length.out = length(res.data.high$Samples)))
+plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
+points(predict(SID.poly.lm, newdata=prd), type='l', col='red')
+
+
+
+
+# KL Divergence ~ Samples LM
+plot(KL.Divergence ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "Kullback–Leibler Divergence")
+kl.dist.lm = lm(`KL.Divergence` ~ Samples, data = res.data.high)
 abline(kl.dist.lm,lwd=2,col=2)
 
-# Diagnostic plots for Linear model
-summary(kl.dist.lm)
+# Diagnostic plots for SID~Samples Linear model
 par(mfrow=c(2,2))
 plot(kl.dist.lm)
 par(mfrow=c(1,1))
 
-ggplot(res.data, aes(x=`Samples`, y=`KL.Divergence`, color=`Mean.Distance`)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+summary(kl.dist.lm)
 
-# ggplot(res.data[50:1500,], aes(x=`Samples`[50:1500], y=`KL.Divergence`[50:1500], color=`Mean.Distance`)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
-# kl.sampl.lm = lm(`KL.Divergence`[50:1500] ~ Samples[50:1500], data = res.data)
-# summary(kl.sampl.lm)
 
-# Diagnostic plots for linear model
+
+ggplot(res.data, aes(x=Samples, y=KL.Divergence, color=Mean.Distance)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+
+# Can you predict the sample size by how well it works?
+test.lm = lm(Samples ~ poly(Mean.Distance,2) * KL.Divergence, data = res.data.high)
+summary(test.lm)
 par(mfrow=c(2,2))
-plot(kl.sampl.lm)
+plot(test.lm)
 par(mfrow=c(1,1))
 
-ggplot(res.data, aes(x=`Samples`, y=log(`Mean.Distance`), color=log(`KL.Divergence`))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
-plot(jitter(log(`Mean.Distance`)) ~ jitter(Samples), data = res.data, pch = "+", xlab = "Number of Samples", ylab = "log(Mean Edit Distance)")
-
-# Compare polynomial regression to simple linear regression
-bn.poly.lm = lm(log(`Mean.Distance`) ~ Samples + I(Samples^2), data = res.data)
-bn.lm = lm(log(`Mean.Distance`) ~ Samples, data = res.data)
-anova(bn.lm, bn.poly.lm)
-
-# Polynomial regression it is.
-anova(bn.poly.lm)
-summary(bn.poly.lm)
-
-# Draw quadratic through data
-prd = data.frame(Samples = seq(from = range(res.data$Samples)[1], to = range(res.data$Samples)[2], length.out = length(res.data$Samples)))
-points(predict(bn.poly.lm, newdata=prd), type='l', col='red')
-
-# Diagnostic plots for polynomial regression
-par(mfrow=c(2,2))
-plot(bn.poly.lm)
-par(mfrow = c(1,1))
-
-# plot((d.given.a.actual - ratio.DgivenA) ~ Samples, data = res.data, xlab = "Number of Samples", ylab = "P(D|A) - P*(D|A)")
-# abline(0, 0, col = 'red', lwd = 0.5, lty = 3)
 
 
 
 
-# POST-STATS-COURSES DATA ANALYSIS
-# res.data.high.sampl = res.data[50:1500,]
-# res.data.high.sampl = res.data.high.sampl[complete.cases(res.data.high.sampl),]
-# summary(res.data.high.sampl)
-
-
-
-# plot(Mean.Distance ~ KL.Divergence, data = res.data.high.sampl, pch = '+')
-# dist.KL.lm = lm(Samples ~ KL.Divergence*Mean.Distance, data = res.data.high.sampl)
-# summary(dist.KL.lm)
-# 
-# par(mfrow=c(2,2))
-# plot(dist.KL.lm)
-# par(mfrow=c(1,1))
-# 
-# 
-# KL.by.sampl = lm(KL.Divergence ~ Samples, data = res.data.high.sampl)
-# summary(KL.by.sampl)
-
-# NOTE DATA STORED HERE
-# write.table(res.data, "fivethousandSamples50Repeat.txt", sep="\t")
 
 # # Print DAG for report
 # graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"))
