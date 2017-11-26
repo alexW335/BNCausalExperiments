@@ -7,6 +7,7 @@ library(lattice)
 library(RColorBrewer)
 library(gridExtra)
 library(Rgraphviz)
+library(parallel)
 
 source("https://bioconductor.org/biocLite.R")
 biocLite("Rgraphviz")

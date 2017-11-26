@@ -7,6 +7,7 @@ library(lattice)
 library(RColorBrewer)
 library(gridExtra)
 library(Rgraphviz)
+library(parallel)
 
 source("https://bioconductor.org/biocLite.R")
 biocLite("Rgraphviz")
@@ -26,9 +27,8 @@ c.cur.lv = "c"
 
 # This calculates the KL-Divergence from the
 # probability distribution associated with the original BN to the 
-# one reconstructed from the data. It also calculates the edit 
-# distance between the original struture and the reconstructed one,
-# where one edit is either an edge removal, addition, or reversal.
+# one reconstructed from the data. It also calculates the 
+# SID between the original struture and the reconstructed one.
 # These are calculated "times.to.repeat" times, and then averaged,
 # where a fresh BN is reconstructed each time on the same number of
 # samples.
@@ -41,7 +41,7 @@ KLMean = function(bn,
                   score.funct = "bde",
                   param.learn.method = "mle"){
   # Holds running sum of graph edit distances
-  sumdist = 0
+  sumSID = 0
   klsum = 0
   
   # Create an adjacency matrix for the original BN
@@ -67,37 +67,9 @@ KLMean = function(bn,
     
     # Generate adjacency matrix for learned network
     lrnd.am = as(bnlearn::as.graphNEL(bn.lnd.mle), "matrix")
-    
-    # These nested loops are used for counting the numebr of edge reversals.
-    # Take the original adjecency matrix and subtract the transpose of the learned one.
-    # The transpose of the learned matrix is the AM of the learned BN with all edges
-    # reversed. If you subtract this AM from the AM of the original BN, and you find a
-    # 0 in the resulting matrix where there is a 1 in the corresponding position in the
-    # original matrix, there has been an edge reversal between those two nodes.
-    # Then remove those entries from the adjacency matrices and add one to the reflections
-    # counter.
-#     sym.check = bn.am - t(lrnd.am)
-#     num.reflections = 0
-#     for (i in seq(1, nrow(bn.am))) {
-#       for (j in seq(1, ncol(bn.am))) {
-#         if (bn.am[i, j] == 1 & sym.check[i, j] == 0) {
-#           bn.am[i, j] = 0
-#           lrnd.am[j, i] = 0
-#           num.reflections = num.reflections + 1
-#         }
-#       }
-#     }
-    
-    # Additions and subtractions are a lot easier now. Since all reflections have been 
-    # removed from the AM, I can simply subtract the learned AM from the original BN's AM and count 
-#     # the number of nonzero entries (and edge addition will be a -1, and deletion a 1). 
-#     difference.matrix.no.ref = bn.am - lrnd.am
-#     mods = Matrix::nnzero(difference.matrix.no.ref)
-#     sumdist = sumdist + num.reflections + mods
-    
+
     # Try using Structural Intervention Distance rather than GED
-    
-    sumdist = sumdist + structIntervDist(bn.am, lrnd.am)$sid
+    sumSID = sumSID + structIntervDist(bn.am, lrnd.am)$sid
     
     # This Loop is where the KL-Divergence is calculated. It involves summing over all possible values of all
     # nodes (other than D), which makes generalisation to other networks difficult.
@@ -121,10 +93,9 @@ KLMean = function(bn,
   grain.lnd.na = setEvidence(grain.lnd, nodes="A", states="na")
   d.given.na = querygrain(grain.lnd.na, nodes = c("D"))[[1]][1]
 
-  # Take the average edit distance found, and average KL Divergence 
+  # Take the average SID, and average KL Divergence 
   # (as they were looped and added to a total)
-  # t = sumdist/times.to.repeat
-  t = sumdist/times.to.repeat
+  t = sumSID/times.to.repeat
   kl = klsum/times.to.repeat
 
   return(list(t, kl, d.given.a, d.given.na))
@@ -141,7 +112,7 @@ B.lv = c("b", "nb")
 C.lv = c("c", "nc")
 D.lv = c("d", "nd")
 
-# Arbitrarily define priors
+# Define probabilities
 A.true    = 0.40
 B.A.true  = 0.70
 B.nA.true = 0.50
@@ -176,7 +147,7 @@ prC = bn.fit.barchart(bn.actual$C, main = "P(C|A)")
 prD = bn.fit.barchart(bn.actual$D, main = "P(D|B,C)")
 
 # This where the data generation takes place. It takes a long time, 
-# but saves the results in a file called 'fivethousandSamples50Repeat.txt'.
+# but saves the results in a text file.
 
 # It goes through from i = min to max.number.of.observations, calling KLMean each time and 
 # instructing it to generate "i" samples, and average the values out over 'repeat.times' times.
@@ -188,7 +159,8 @@ min.number.of.observations = 1
 max.num.observations = 500
 
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations))
-colnames(res.data) = c("Samples", "Mean.Distance", "KL.Divergence", "ratio.DgivenA", "ratio.DgivenNA")
+colnames(res.data) = c("Samples", "Mean.SID", "KL.Divergence", "ratio.DgivenA", "ratio.DgivenNA")
+
 for (i in seq(from = min.number.of.observations, to = max.num.observations)){
   print(i)
   edit.dist.klmean.pair = KLMean(bn.actual, i, times.to.repeat = repeat.times)
