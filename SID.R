@@ -8,13 +8,6 @@ library(RColorBrewer)
 library(gridExtra)
 library(Rgraphviz)
 library(parallel)
-
-# source("https://bioconductor.org/biocLite.R")
-# biocLite("Rgraphviz")
-# biocLite("RBGL")
-# biocLite("rlang")
-# 
-# install.packages('SID')
 library(SID)
 
 
@@ -60,7 +53,7 @@ KLMean = function(bn,
     # network fits the data, penalises for having too many edges.
     # Hill-climbing algorithm used to explore restricted search-space.
     # Denis & Scutari has good explanation of rsmax2.
-    cust = rsmax2(gen.samples, test = "sp-x2", restrict="iamb",  score = "bic", maximize = "hc")
+    cust = rsmax2(gen.samples, restrict="iamb", maximize = "hc")
 
     # Learn BN parameters with simple Maximum Likelihood Estimate method.
     bn.lnd.mle = bn.fit(cust, data = gen.samples, method = "mle")
@@ -70,35 +63,14 @@ KLMean = function(bn,
 
     # Try using Structural Intervention Distance rather than GED
     sumSID = sumSID + structIntervDist(bn.am, lrnd.am)$sid
-    
-    # This Loop is where the KL-Divergence is calculated. It involves summing over all possible values of all
-    # nodes (other than D), which makes generalisation to other networks difficult.
-    for (a.cur.lv in c(rownames(bn.actual$A$prob))) {
-      for (b.cur.lv in c(rownames(bn.actual$B$prob))) {
-        for (c.cur.lv in c(rownames(bn.actual$C$prob))) {
-         pi = cpquery(bn.actual,  event = (D == "d"), evidence = ((A == a.cur.lv)&(B == b.cur.lv))&(C == c.cur.lv), n=5000*nparams(bn.actual))
-         qi = cpquery(bn.lnd.mle, event = (D == "d"), evidence = ((A == a.cur.lv)&(B == b.cur.lv))&(C == c.cur.lv), n=5000*nparams(bn.actual))
-         klsum = klsum + pi*log(pi/qi) + (1-pi)*log((1-pi)/(1-qi))
-        }
-      }
-    }
   }
   
-  # # Find P*(D|A) and P*(D|~A) exactly using gRain. A lot of overhead.
-  # grain.lnd = gRain::compile.CPTgrain(as.grain(bn.lnd.mle))
-  # 
-  # grain.lnd.a = setEvidence(grain.lnd, nodes="A", states="a")
-  # d.given.a = querygrain(grain.lnd.a, nodes = c("D"))[[1]][1]
-  # 
-  # grain.lnd.na = setEvidence(grain.lnd, nodes="A", states="na")
-  # d.given.na = querygrain(grain.lnd.na, nodes = c("D"))[[1]][1]
-
   # Take the average SID, and average KL Divergence 
   # (as they were looped and added to a total)
   t = sumSID/times.to.repeat
   kl = klsum/times.to.repeat
 
-  return(list(t, kl, d.given.a, d.given.na))
+  return(list(t, kl))
 }
 
 # Specify the network structure
@@ -155,33 +127,26 @@ prD = bn.fit.barchart(bn.actual$D, main = "P(D|B,C)")
 # compares to the original BN.
 
 repeat.times = 10
-min.number.of.observations = 1
-max.num.observations = 500
+min.number.of.observations = 50
+max.num.observations = 750
 
-res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations), vector(mode = "numeric", length = max.num.observations))
-colnames(res.data) = c("Samples", "Mean.SID", "KL.Divergence", "ratio.DgivenA", "ratio.DgivenNA")
+res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations))
+colnames(res.data) = c("Samples", "Mean.SID")
 
 for (i in seq(from = min.number.of.observations, to = max.num.observations)){
   print(i)
   edit.dist.klmean.pair = KLMean(bn.actual, i, times.to.repeat = repeat.times)
-  res.data[i, 2] = edit.dist.klmean.pair[1]
-  res.data[i, 3] = edit.dist.klmean.pair[2]
-  res.data[i, 4] = edit.dist.klmean.pair[3]
-  res.data[i, 5] = edit.dist.klmean.pair[4]
+  res.data[i, 1] = edit.dist.klmean.pair[1]
+  res.data[i, 2] = edit.dist.klmean.pair[2]
 }
 
-
-# Find (exactly) P(D|A=a) from the original BN for comparison.
-# grain.act = gRain::compile.CPTgrain(as.grain(bn.actual))
-# grain.act.a = setEvidence(grain.act, nodes="A", states="a")
-# d.given.a.actual = querygrain(grain.act.a, nodes = c("D"))[[1]][1]
 
 # Run below line if generating new data to stop log-problems. 
 # Will lose some low-sample data points.
 res.data = res.data[is.finite(rowSums(res.data)),]
+plot(res.data)
 
-
-
+plot(res.data[,1])
 
 
 
