@@ -9,12 +9,12 @@ library(gridExtra)
 library(Rgraphviz)
 library(parallel)
 
-source("https://bioconductor.org/biocLite.R")
-biocLite("Rgraphviz")
-biocLite("RBGL")
-biocLite("rlang")
-
-install.packages('SID')
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("Rgraphviz")
+# biocLite("RBGL")
+# biocLite("rlang")
+# 
+# install.packages('SID')
 library(SID)
 
 
@@ -154,7 +154,7 @@ prD = bn.fit.barchart(bn.actual$D, main = "P(D|B,C)")
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
 
-repeat.times = 15
+repeat.times = 10
 min.number.of.observations = 1
 max.num.observations = 500
 
@@ -172,9 +172,9 @@ for (i in seq(from = min.number.of.observations, to = max.num.observations)){
 
 
 # Find (exactly) P(D|A=a) from the original BN for comparison.
-grain.act = gRain::compile.CPTgrain(as.grain(bn.actual))
-grain.act.a = setEvidence(grain.act, nodes="A", states="a")
-d.given.a.actual = querygrain(grain.act.a, nodes = c("D"))[[1]][1]
+# grain.act = gRain::compile.CPTgrain(as.grain(bn.actual))
+# grain.act.a = setEvidence(grain.act, nodes="A", states="a")
+# d.given.a.actual = querygrain(grain.act.a, nodes = c("D"))[[1]][1]
 
 # Run below line if generating new data to stop log-problems. 
 # Will lose some low-sample data points.
@@ -290,3 +290,6 @@ graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I
 # # Plot 2 node network for equivalence
 # graphviz.plot(model2network("[A][B|A]"), layout = "fdp")
 # graphviz.plot(model2network("[A|B][B]"))
+
+
+plot(res.data$Mean.Distance ~ res.data$Samples)
