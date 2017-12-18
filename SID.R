@@ -84,14 +84,14 @@ KLMean = function(bn,
     }
   }
   
-  # Find P*(D|A) and P*(D|~A) exactly using gRain. A lot of overhead.
-  grain.lnd = gRain::compile.CPTgrain(as.grain(bn.lnd.mle))
-  
-  grain.lnd.a = setEvidence(grain.lnd, nodes="A", states="a")
-  d.given.a = querygrain(grain.lnd.a, nodes = c("D"))[[1]][1]
-
-  grain.lnd.na = setEvidence(grain.lnd, nodes="A", states="na")
-  d.given.na = querygrain(grain.lnd.na, nodes = c("D"))[[1]][1]
+  # # Find P*(D|A) and P*(D|~A) exactly using gRain. A lot of overhead.
+  # grain.lnd = gRain::compile.CPTgrain(as.grain(bn.lnd.mle))
+  # 
+  # grain.lnd.a = setEvidence(grain.lnd, nodes="A", states="a")
+  # d.given.a = querygrain(grain.lnd.a, nodes = c("D"))[[1]][1]
+  # 
+  # grain.lnd.na = setEvidence(grain.lnd, nodes="A", states="na")
+  # d.given.na = querygrain(grain.lnd.na, nodes = c("D"))[[1]][1]
 
   # Take the average SID, and average KL Divergence 
   # (as they were looped and added to a total)
