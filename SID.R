@@ -65,12 +65,10 @@ KLMean = function(bn,
     sumSID = sumSID + structIntervDist(bn.am, lrnd.am)$sid
   }
   
-  # Take the average SID, and average KL Divergence 
-  # (as they were looped and added to a total)
+  # Take the average SID
   t = sumSID/times.to.repeat
-  kl = klsum/times.to.repeat
 
-  return(list(t, kl))
+  return(t)
 }
 
 # Specify the network structure
@@ -126,18 +124,19 @@ prD = bn.fit.barchart(bn.actual$D, main = "P(D|B,C)")
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
 
-repeat.times = 1
+repeat.times = 5
 min.number.of.observations = 50
-max.num.observations = 100
+max.num.observations = 1000
 
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
 colnames(res.data) = c("Samples", "Mean.SID")
 
+c=1
 for (i in seq(from = min.number.of.observations, to = max.num.observations)){
   print(i)
-  edit.dist.klmean.pair = KLMean(bn.actual, i, times.to.repeat = repeat.times)
-  res.data[i, 1] = edit.dist.klmean.pair[1]
-  res.data[i, 2] = edit.dist.klmean.pair[2]
+  res.data[c, 1] = i
+  res.data[c, 2] = KLMean(bn.actual, i, times.to.repeat = repeat.times)
+  c = c + 1
 }
 
 
