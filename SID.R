@@ -18,7 +18,7 @@ b.cur.lv = "b"
 c.cur.lv = "c"
 
 
-# This calculates the KL-Divergence from the
+# This calculates the SID-Divergence from the
 # probability distribution associated with the original BN to the 
 # one reconstructed from the data. It also calculates the 
 # SID between the original struture and the reconstructed one.
@@ -27,7 +27,7 @@ c.cur.lv = "c"
 # samples.
 # It also finds (exactly) the probabilities P(D|A) and P(D|~A), 
 # however only once as it can be quite expensive to do.
-KLMean = function(bn,
+SIDMean = function(bn,
                   num.samples.to.gen,
                   times.to.repeat = 1,
                   test.funct = "x2",
@@ -35,8 +35,7 @@ KLMean = function(bn,
                   param.learn.method = "mle"){
   # Holds running sum of graph edit distances
   sumSID = 0
-  klsum = 0
-  
+
   # Create an adjacency matrix for the original BN
   bn.am = as(bnlearn::as.graphNEL(bn), "matrix")
   
@@ -72,31 +71,52 @@ KLMean = function(bn,
 }
 
 # Specify the network structure
-dag.test = model2network("[A][B|A][C|A][D|B:C]")
+dag.test = model2network("[A][B][C|A:B][D|B][E|B][G|E][H|C:D]")
 graphviz.plot(dag.test)
 
 
 # Label levels
-A.lv = c("a", "na")
-B.lv = c("b", "nb")
-C.lv = c("c", "nc")
-D.lv = c("d", "nd")
+A.lv = c("a", "-a")
+B.lv = c("b", "-b")
+C.lv = c("c", "-c")
+D.lv = c("d", "-d")
+E.lv = c("e", "-e")
+
+G.lv = c("g", "-g")
+H.lv = c("h", "-h")
 
 # Define probabilities
-A.true    = 0.40
-B.A.true  = 0.70
-B.nA.true = 0.50
-C.A.true  = 0.50
-C.nA.true = 0.60
+A      = 0.3
+B      = 0.7
+EgB    = 0.2
+EgnB   = 0.8
+GgE    = 0.4
+GgnE   = 0.6
+DgB    = 0.3
+DgnB   = 0.1
+CgAB   = 0.1
+CgAnB  = 0.7
+CgnAB  = 0.8
+CgnAnB = 0.4
+HgCD   = 0.2
+HgCnD  = 0.9
+HgnCD  = 0.7
+HgnCnD = 0.5
+
 
 # Assign to arrays
-A.prob = array(c(A.true, 1 - A.true), dim = 2, dimnames = list(A = A.lv))
-B.prob = array(c(B.A.true, 1 - B.A.true, B.nA.true, 1-B.nA.true), dim = c(2, 2), dimnames = list(B = B.lv, A = A.lv))
-C.prob = array(c(C.A.true, 1 - C.A.true, C.nA.true, 1-C.nA.true), dim = c(2, 2), dimnames = list(C = C.lv, A = A.lv))
-D.prob = array(c(0.1, 0.9, 0.8, 0.2, 0.4, 0.6, 0.5, 0.5), dim=c(2,2,2), dimnames = list(D = D.lv, B = B.lv, C = C.lv))
+A.prob = array(c(A, 1 - A), dim = 2, dimnames = list(A = A.lv))
+B.prob = array(c(B, 1 - B), dim = 2, dimnames = list(B = B.lv))
+E.prob = array(c(EgB, 1-EgB, EgnB, 1- EgnB), dim=c(2,2), dimnames = list(E = E.lv, B = B.lv))
+G.prob = array(c(GgE, 1-GgE, GgnE, 1- GgnE), dim=c(2,2), dimnames = list(G = G.lv, E = E.lv))
+D.prob = array(c(DgB, 1-DgB, DgnB, 1- DgnB), dim=c(2,2), dimnames = list(D = D.lv, B = B.lv))
+C.prob = array(c(CgAB, 1-CgAB, CgnAB, 1-CgnAB, CgAnB, 1-CgAnB, CgnAnB, 1-CgnAnB), 
+               dim=c(2,2,2), dimnames = list(C = C.lv, A = A.lv, B = B.lv))
+H.prob = array(c(HgCD, 1-HgCD, HgnCD, 1-HgnCD, HgCnD, 1-HgCnD, HgnCnD, 1-HgnCnD), 
+               dim=c(2,2,2), dimnames = list(H = H.lv, C = C.lv, D = D.lv))
 
 # Create distribution & fit to BN
-loc.dist = list(A = A.prob, B = B.prob, C = C.prob, D = D.prob)
+loc.dist = list(A = A.prob, B = B.prob, C = C.prob, D = D.prob, E = E.prob, G = G.prob, H = H.prob)
 bn.actual = custom.fit(dag.test, loc.dist)
 
 # Get rid of the heinous default colours when 
@@ -112,14 +132,17 @@ trellis.par.set(my.settings)
 
 # Display the probability distributions of each node with barcharts.
 prA = bn.fit.barchart(bn.actual$A, main = "P(A)")
-prB = bn.fit.barchart(bn.actual$B, main = "P(B|A)")
-prC = bn.fit.barchart(bn.actual$C, main = "P(C|A)")
-prD = bn.fit.barchart(bn.actual$D, main = "P(D|B,C)")
+prB = bn.fit.barchart(bn.actual$B, main = "P(B)")
+prC = bn.fit.barchart(bn.actual$C, main = "P(C|A,B)")
+prD = bn.fit.barchart(bn.actual$D, main = "P(D|B)")
+prE = bn.fit.barchart(bn.actual$E, main = "P(E|B)")
+prG = bn.fit.barchart(bn.actual$G, main = "P(G|E)")
+prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
 
 # This where the data generation takes place. It takes a long time, 
 # but saves the results in a text file.
 
-# It goes through from i = min to max.number.of.observations, calling KLMean each time and 
+# It goes through from i = min to max.number.of.observations, calling SIDMean each time and 
 # instructing it to generate "i" samples, and average the values out over 'repeat.times' times.
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
@@ -135,7 +158,7 @@ c=1
 for (i in seq(from = min.number.of.observations, to = max.num.observations)){
   print(i)
   res.data[c, 1] = i
-  res.data[c, 2] = KLMean(bn.actual, i, times.to.repeat = repeat.times)
+  res.data[c, 2] = SIDMean(bn.actual, i, times.to.repeat = repeat.times)
   c = c + 1
 }
 
@@ -171,7 +194,7 @@ plot(res.data[,2] ~ res.data[,1])
 # plot(res.data)
 # 
 # # Plot 
-# ggplot(res.data, aes(x=Samples, y=Mean.Distance, color=log(KL.Divergence))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+# ggplot(res.data, aes(x=Samples, y=Mean.Distance, color=log(SID.Divergence))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
 # 
 # 
 # # SID ~ Samples LM
@@ -204,24 +227,24 @@ plot(res.data[,2] ~ res.data[,1])
 # 
 # 
 # 
-# # KL Divergence ~ Samples LM
-# plot(KL.Divergence ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "Kullback–Leibler Divergence")
-# kl.dist.lm = lm(`KL.Divergence` ~ Samples, data = res.data.high)
-# abline(kl.dist.lm,lwd=2,col=2)
+# # SID Divergence ~ Samples LM
+# plot(SID.Divergence ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "Kullback–Leibler Divergence")
+# SID.dist.lm = lm(`SID.Divergence` ~ Samples, data = res.data.high)
+# abline(SID.dist.lm,lwd=2,col=2)
 # 
 # # Diagnostic plots for SID~Samples Linear model
 # par(mfrow=c(2,2))
-# plot(kl.dist.lm)
+# plot(SID.dist.lm)
 # par(mfrow=c(1,1))
 # 
-# summary(kl.dist.lm)
+# summary(SID.dist.lm)
 # 
 # 
 # 
-# ggplot(res.data, aes(x=Samples, y=KL.Divergence, color=Mean.Distance)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+# ggplot(res.data, aes(x=Samples, y=SID.Divergence, color=Mean.Distance)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
 # 
 # # Can you predict the sample size by how well it works?
-# test.lm = lm(Samples ~ poly(Mean.Distance,2) * KL.Divergence, data = res.data.high)
+# test.lm = lm(Samples ~ poly(Mean.Distance,2) * SID.Divergence, data = res.data.high)
 # summary(test.lm)
 # par(mfrow=c(2,2))
 # plot(test.lm)
