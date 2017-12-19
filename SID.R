@@ -9,6 +9,7 @@ library(gridExtra)
 library(Rgraphviz)
 library(parallel)
 library(SID)
+library(parallel)
 # 
 # install.packages("SID", lib = "H:/My Documents/libs")
 # source("https://bioconductor.org/biocLite.R")
@@ -143,9 +144,9 @@ prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
 # instructing it to generate "i" samples, and average the values out over 'repeat.times' times.
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
-repeat.times = 32
+repeat.times = 10
 min.number.of.observations = 1
-max.num.observations = 2048
+max.num.observations = 500
 # repeat.times = 5
 # min.number.of.observations = 50
 # max.num.observations = 100
@@ -171,15 +172,26 @@ c=1
 #     c = c + 1
 # }
 storeda = seq(from = min.number.of.observations, to = max.num.observations)
-res.data = lapply(storeda, FUN=sfunct)
+
+# Calculate the number of cores
+detectCores()
+no_cores <- detectCores() - 1
+
+# Initiate cluster
+cl <- makeCluster(no_cores)
+clusterExport(cl, list("SIDMean", "bn.actual", "repeat.times", "rbn", "rsmax2",
+                       "bn.fit", "structIntervDist"))
+
+res.data = parLapply(cl, storeda, fun=sfunct)
+stopCluster(cl)
 
 # Run below line if generating new data to stop log-problems. 
 # Will lose some low-sample data points.
 # res.data = res.data[is.finite(rowSums(res.data))]
 plot(x=seq(from = min.number.of.observations, to = max.num.observations), y=res.data, pch ="+", xlab = "Samples", ylab = "SID")
 # ggplot(res.data, aes('Samples', 'Mean SID')) + geom_ribbon(aes(ymin = res.data[,3], ymax = res.data[,4]), fill = "grey70") + geom_line()
-list.save(res.data, 'list.rdata')
-check = list.load("list.rdata")
+# list.save(res.data, 'list.rdata')
+# check = list.load("list.rdata")
 # 
 # 
 # 
