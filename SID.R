@@ -9,14 +9,17 @@ library(gridExtra)
 library(Rgraphviz)
 library(parallel)
 library(SID)
-
+# 
+# install.packages("SID", lib = "H:/My Documents/libs")
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("Rgraphviz", lib = "H:/My Documents/libs")
+# biocLite("RBGL", lib = "H:/My Documents/libs")
 
 # For some reason these variables need to be instantiated outside 
 # the function in the global scope.
 a.cur.lv = "a"
 b.cur.lv = "b"
 c.cur.lv = "c"
-
 
 # This calculates the SID-Divergence from the
 # probability distribution associated with the original BN to the 
@@ -28,56 +31,54 @@ c.cur.lv = "c"
 # It also finds (exactly) the probabilities P(D|A) and P(D|~A), 
 # however only once as it can be quite expensive to do.
 SIDMean = function(bn,
-                  num.samples.to.gen,
-                  times.to.repeat = 1,
-                  test.funct = "x2",
-                  score.funct = "bde",
-                  param.learn.method = "mle"){
-  # Holds running sum of graph edit distances
-  sumSID = 0
-  sup = 0
-  sdown = 0
-
-  # Create an adjacency matrix for the original BN
-  bn.am = as(bnlearn::as.graphNEL(bn), "matrix")
-  
-  
-  for (i in 1:times.to.repeat){
-    # Randomly generate 'num.samples.to.gen' samples from the original BN.
-    gen.samples = rbn(bn, num.samples.to.gen)
-
-    # Learn BN structure from those samples using the restrict-maximise heuristic.
-    # Semi-parametric X2 test used for independence (restrict phase).
-    # Inter-Associative Markov Blanket (IAMB) used to find the markov blanket of each node, as it is 
-    # fast and reasonably accurate and easy to understand.
-    # Bayesian Information Criterion score used in the maximise phase - good score of how well the
-    # network fits the data, penalises for having too many edges.
-    # Hill-climbing algorithm used to explore restricted search-space.
-    # Denis & Scutari has good explanation of rsmax2.
-    cust = rsmax2(gen.samples, restrict="iamb", maximize = "hc")
-
-    # Learn BN parameters with simple Maximum Likelihood Estimate method.
-    bn.lnd.mle = bn.fit(cust, data = gen.samples, method = "mle")
+                   num.samples.to.gen,
+                   times.to.repeat = 1,
+                   test.funct = "x2",
+                   score.funct = "bde",
+                   param.learn.method = "mle"){
+    # Holds running sum of graph edit distances
+    sumSID = 0
+    sup = 0
+    sdown = 0
     
-    # Generate adjacency matrix for learned network
-    lrnd.am = as(bnlearn::as.graphNEL(bn.lnd.mle), "matrix")
-
-    # Try using Structural Intervention Distance rather than GED
-    sidout = structIntervDist(bn.am, lrnd.am)
+    # Create an adjacency matrix for the original BN
+    bn.am = as(bnlearn::as.graphNEL(bn), "matrix")
     
-    sumSID = sumSID + sidout$sid
-    sup    = sup    + sidout$sidUpperBound
-    sdown  = sdown  + sidout$sidLowerBound
     
-  }
-  
-  return(c(sumSID, sdown, sup)/times.to.repeat)
+    for (i in 1:times.to.repeat){
+        # Randomly generate 'num.samples.to.gen' samples from the original BN.
+        gen.samples = rbn(bn, num.samples.to.gen)
+        
+        # Learn BN structure from those samples using the restrict-maximise heuristic.
+        # Semi-parametric X2 test used for independence (restrict phase).
+        # Inter-Associative Markov Blanket (IAMB) used to find the markov blanket of each node, as it is 
+        # fast and reasonably accurate and easy to understand.
+        # Bayesian Information Criterion score used in the maximise phase - good score of how well the
+        # network fits the data, penalises for having too many edges.
+        # Hill-climbing algorithm used to explore restricted search-space.
+        # Denis & Scutari has good explanation of rsmax2.
+        cust = rsmax2(gen.samples, restrict="iamb", maximize = "hc")
+        
+        # Learn BN parameters with simple Maximum Likelihood Estimate method.
+        bn.lnd.mle = bn.fit(cust, data = gen.samples, method = "mle")
+        
+        # Generate adjacency matrix for learned network
+        lrnd.am = as(bnlearn::as.graphNEL(bn.lnd.mle), "matrix")
+        
+        # Try using Structural Intervention Distance rather than GED
+        sidout = structIntervDist(bn.am, lrnd.am)
+        
+        sumSID = sumSID + sidout$sid
+        sup    = sup    + sidout$sidUpperBound
+        sdown  = sdown  + sidout$sidLowerBound
+        
+    }
+    
+    return(c(sumSID, sdown, sup)/times.to.repeat)
 }
-
 # Specify the network structure
 dag.test = model2network("[A][B][C|A:B][D|B][E|B][G|E][H|C:D]")
 graphviz.plot(dag.test)
-
 
 # Label levels
 A.lv = c("a", "-a")
@@ -85,10 +86,8 @@ B.lv = c("b", "-b")
 C.lv = c("c", "-c")
 D.lv = c("d", "-d")
 E.lv = c("e", "-e")
-
 G.lv = c("g", "-g")
 H.lv = c("h", "-h")
-
 # Define probabilities
 A      = 0.3
 B      = 0.7
@@ -107,7 +106,6 @@ HgCnD  = 0.9
 HgnCD  = 0.7
 HgnCnD = 0.5
 
-
 # Assign to arrays
 A.prob = array(c(A, 1 - A), dim = 2, dimnames = list(A = A.lv))
 B.prob = array(c(B, 1 - B), dim = 2, dimnames = list(B = B.lv))
@@ -118,11 +116,9 @@ C.prob = array(c(CgAB, 1-CgAB, CgnAB, 1-CgnAB, CgAnB, 1-CgAnB, CgnAnB, 1-CgnAnB)
                dim=c(2,2,2), dimnames = list(C = C.lv, A = A.lv, B = B.lv))
 H.prob = array(c(HgCD, 1-HgCD, HgnCD, 1-HgnCD, HgCnD, 1-HgCnD, HgnCnD, 1-HgnCnD), 
                dim=c(2,2,2), dimnames = list(H = H.lv, C = C.lv, D = D.lv))
-
 # Create distribution & fit to BN
 loc.dist = list(A = A.prob, B = B.prob, C = C.prob, D = D.prob, E = E.prob, G = G.prob, H = H.prob)
 bn.actual = custom.fit(dag.test, loc.dist)
-
 # Get rid of the heinous default colours when 
 # displaying the probability distributions for each node
 myColours <- brewer.pal(6,"Greys")
@@ -133,7 +129,6 @@ my.settings <- list(
     strip.border=list(col="black")
 )
 trellis.par.set(my.settings)
-
 # Display the probability distributions of each node with barcharts.
 prA = bn.fit.barchart(bn.actual$A, main = "P(A)")
 prB = bn.fit.barchart(bn.actual$B, main = "P(B)")
@@ -142,47 +137,49 @@ prD = bn.fit.barchart(bn.actual$D, main = "P(D|B)")
 prE = bn.fit.barchart(bn.actual$E, main = "P(E|B)")
 prG = bn.fit.barchart(bn.actual$G, main = "P(G|E)")
 prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
-
 # This where the data generation takes place. It takes a long time, 
 # but saves the results in a text file.
-
 # It goes through from i = min to max.number.of.observations, calling SIDMean each time and 
 # instructing it to generate "i" samples, and average the values out over 'repeat.times' times.
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
-
-repeat.times = 10
+repeat.times = 32
 min.number.of.observations = 1
-max.num.observations = 1000
-
+max.num.observations = 2048
+# repeat.times = 5
+# min.number.of.observations = 50
+# max.num.observations = 100
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
                       vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
 colnames(res.data) = c("Samples", "Mean SID", "Lower", "Upper")
 
-c=1
-for (i in seq(from = min.number.of.observations, to = max.num.observations)){
-  print(i)
-  res.data[c, 1] = i
-  s = SIDMean(bn.actual, i, times.to.repeat = repeat.times)
-  res.data[c, 2] = s[1]
-  res.data[c, 3] = s[2]
-  res.data[c, 4] = s[3]
-  
-  c = c + 1
+sfunct = function(i){
+    v = SIDMean(bn.actual, i, repeat.times)
+    return(v[1])
 }
 
+c=1
+# for (i in seq(from = min.number.of.observations, to = max.num.observations)){
+#     print(i)
+#     res.data[c, 1] = i
+#     # s = SIDMean(bn.actual, i, times.to.repeat = repeat.times)
+#     s = sfunct(i)
+#     res.data[c, 2] = s[1]
+#     res.data[c, 3] = s[2]
+#     res.data[c, 4] = s[3]
+#     
+#     c = c + 1
+# }
+storeda = seq(from = min.number.of.observations, to = max.num.observations)
+res.data = lapply(storeda, FUN=sfunct)
 
 # Run below line if generating new data to stop log-problems. 
 # Will lose some low-sample data points.
-res.data = res.data[is.finite(rowSums(res.data)),]
-
-plot(res.data[,2] ~ res.data[,1], pch ="+", xlab = "Samples", ylab = "SID")
-
+# res.data = res.data[is.finite(rowSums(res.data))]
+plot(x=seq(from = min.number.of.observations, to = max.num.observations), y=res.data, pch ="+", xlab = "Samples", ylab = "SID")
 # ggplot(res.data, aes('Samples', 'Mean SID')) + geom_ribbon(aes(ymin = res.data[,3], ymax = res.data[,4]), fill = "grey70") + geom_line()
-
-
-
-
+list.save(res.data, 'list.rdata')
+check = list.load("list.rdata")
 # 
 # 
 # 
