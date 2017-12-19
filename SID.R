@@ -35,6 +35,8 @@ SIDMean = function(bn,
                   param.learn.method = "mle"){
   # Holds running sum of graph edit distances
   sumSID = 0
+  sup = 0
+  sdown = 0
 
   # Create an adjacency matrix for the original BN
   bn.am = as(bnlearn::as.graphNEL(bn), "matrix")
@@ -61,13 +63,15 @@ SIDMean = function(bn,
     lrnd.am = as(bnlearn::as.graphNEL(bn.lnd.mle), "matrix")
 
     # Try using Structural Intervention Distance rather than GED
-    sumSID = sumSID + structIntervDist(bn.am, lrnd.am)$sid
+    sidout = structIntervDist(bn.am, lrnd.am)
+    
+    sumSID = sumSID + sidout$sid
+    sup    = sup    + sidout$sidUpperBound
+    sdown  = sdown  + sidout$sidLowerBound
+    
   }
   
-  # Take the average SID
-  t = sumSID/times.to.repeat
-
-  return(t)
+  return(c(sumSID, sdown, sup)/times.to.repeat)
 }
 
 # Specify the network structure
@@ -149,16 +153,21 @@ prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
 
 repeat.times = 5
 min.number.of.observations = 50
-max.num.observations = 1000
+max.num.observations = 150
 
-res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
-colnames(res.data) = c("Samples", "Mean.SID")
+res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
+                      vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
+colnames(res.data) = c("Samples", "Mean SID", "Lower", "Upper")
 
 c=1
 for (i in seq(from = min.number.of.observations, to = max.num.observations)){
   print(i)
   res.data[c, 1] = i
-  res.data[c, 2] = SIDMean(bn.actual, i, times.to.repeat = repeat.times)
+  s = SIDMean(bn.actual, i, times.to.repeat = repeat.times)
+  res.data[c, 2] = s[1]
+  res.data[c, 3] = s[2]
+  res.data[c, 4] = s[3]
+  
   c = c + 1
 }
 
@@ -167,11 +176,9 @@ for (i in seq(from = min.number.of.observations, to = max.num.observations)){
 # Will lose some low-sample data points.
 res.data = res.data[is.finite(rowSums(res.data)),]
 
-plot(res.data[,2] ~ res.data[,1])
+plot(res.data[,2] ~ res.data[,1], pch ="+", xlab = "Samples", ylab = "SID")
 
-
-
-
+# ggplot(res.data, aes('Samples', 'Mean SID')) + geom_ribbon(aes(ymin = res.data[,3], ymax = res.data[,4]), fill = "grey70") + geom_line()
 
 
 
