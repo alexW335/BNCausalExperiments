@@ -11,7 +11,9 @@ library(parallel)
 library(SID)
 library(parallel)
 library(rlist)
-# 
+library(gam)
+
+
 # install.packages("SID", lib = "H:/My Documents/libs")
 # source("https://bioconductor.org/biocLite.R")
 # biocLite("Rgraphviz", lib = "H:/My Documents/libs")
@@ -183,7 +185,9 @@ pts = data.frame(Samples=storeda, SID=res.data)
 # write.table(pts, 'datagen.txt')
 
 plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
-plot(log(SID) ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "log(SID) ~ Samples 500:2000", data = pts)
+plot(log(SID) ~ Samples, pch ="+", xlab = "Samples", ylab = "log(SID)", main = "log(SID) ~ Samples 500:2000", data = pts)
+
+tail(pts)
 
 tlm = lm(log(SID) ~ Samples, data = pts[500:2000,])
 plm = lm(log(SID) ~ poly(Samples, 5), data = pts[500:2000,])
@@ -197,15 +201,17 @@ par(mfrow=c(1,1))
 
 
 
-plm = lm(SID ~ poly(Samples, 21), data = pts)
-summary(plm)
+# pts = read.table("datagen.txt")
 
-step(plm)
+# Try a GAM
+gm = gam(SID ~ s(Samples), data = pts)
+summary(gm)
+
+plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
+t = predict.gam(gm, newdata=data.frame(Samples = pts$Samples))
+lines(t ~ pts$Samples, col='red', type='l')
 
 par(mfrow=c(2,2))
-plot(plm)
+gam.check(gm)
 par(mfrow=c(1,1))
-
-
-
 
