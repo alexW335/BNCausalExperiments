@@ -10,6 +10,7 @@ library(Rgraphviz)
 library(parallel)
 library(SID)
 library(parallel)
+library(rlist)
 # 
 # install.packages("SID", lib = "H:/My Documents/libs")
 # source("https://bioconductor.org/biocLite.R")
@@ -149,6 +150,7 @@ bn.actual = custom.fit(dag.test, loc.dist)
 repeat.times = 50
 min.number.of.observations = 1
 max.num.observations = 2000
+step.size = 1
 
 
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
@@ -160,7 +162,7 @@ sfunct = function(i){
     return(v[1])
 }
 
-storeda = seq(from = min.number.of.observations, to = max.num.observations)
+storeda = seq(from = min.number.of.observations, to = max.num.observations, by=step.size)
 
 # Calculate the number of cores
 detectCores()
@@ -176,7 +178,9 @@ stopCluster(cl)
 
 
 # res.data = res.data[is.finite(rowSums(res.data))]
-plot(x=seq(from = min.number.of.observations, to = max.num.observations), y=res.data, pch ="+", xlab = "Samples", ylab = "SID")
+res.data = unlist(res.data)
+pts = data.frame(Samples=storeda, SID=res.data)
+plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "", data = pts)
+plot(log(SID) ~ Samples, pch =".", xlab = "Samples", ylab = "log(SID)", data = pts)
 
-# list.save(res.data, 'list.rdata')
-# check = list.load("list.rdata")
+write.table(pts, 'datagen.txt')
