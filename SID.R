@@ -126,11 +126,11 @@ prD = bn.fit.barchart(bn.actual$D, main = "P(D|B,C)")
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
 
-repeat.times = 10
+repeat.times = 1
 min.number.of.observations = 50
-max.num.observations = 750
+max.num.observations = 100
 
-res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations))
+res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
 colnames(res.data) = c("Samples", "Mean.SID")
 
 for (i in seq(from = min.number.of.observations, to = max.num.observations)){
@@ -144,10 +144,8 @@ for (i in seq(from = min.number.of.observations, to = max.num.observations)){
 # Run below line if generating new data to stop log-problems. 
 # Will lose some low-sample data points.
 res.data = res.data[is.finite(rowSums(res.data)),]
-plot(res.data)
 
-plot(res.data[,1])
-
+plot(res.data[,2] ~ res.data[,1])
 
 
 
@@ -156,105 +154,106 @@ plot(res.data[,1])
 
 
 
-
-
-
-
-
-
-low.col = "black"
-high.col = "yellow"
-
-
-# Uncomment the below line if reading the data from a file rather than regenerating.
-res.data = read.table("newmetric1000samples25rep.txt", sep="\t")
-res.data = res.data[-c(4,5)]
-
-plot(res.data)
-
-# Plot 
-ggplot(res.data, aes(x=Samples, y=Mean.Distance, color=log(KL.Divergence))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
-
-
-# SID ~ Samples LM
-res.data.high = res.data[100:length(res.data[,1]),]
-plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
-SID.lm = lm(Mean.Distance ~ Samples, data = res.data.high)
-
-# Diagnostic plots for SID~Samples Linear model
-par(mfrow=c(2,2))
-plot(SID.lm)
-par(mfrow=c(1,1))
-
-# Polynomial Model?
-SID.poly.lm = lm(Mean.Distance ~ poly(Samples, 2), data = res.data.high)
-anova(SID.lm, SID.poly.lm)
-
-# Diagnostic plots for SID~Samples Polynomial model
-par(mfrow=c(2,2))
-plot(SID.poly.lm)
-par(mfrow=c(1,1))
-
-summary(SID.poly.lm)
-
-# Draw quadratic through data
-# NOT WORKING???
-prd = data.frame(Samples = seq(from = range(res.data.high$Samples)[1], to = range(res.data.high$Samples)[2], length.out = length(res.data.high$Samples)))
-plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
-points(predict(SID.poly.lm, newdata=prd), type='l', col='red')
-
-
-
-
-# KL Divergence ~ Samples LM
-plot(KL.Divergence ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "Kullback–Leibler Divergence")
-kl.dist.lm = lm(`KL.Divergence` ~ Samples, data = res.data.high)
-abline(kl.dist.lm,lwd=2,col=2)
-
-# Diagnostic plots for SID~Samples Linear model
-par(mfrow=c(2,2))
-plot(kl.dist.lm)
-par(mfrow=c(1,1))
-
-summary(kl.dist.lm)
-
-
-
-ggplot(res.data, aes(x=Samples, y=KL.Divergence, color=Mean.Distance)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
-
-# Can you predict the sample size by how well it works?
-test.lm = lm(Samples ~ poly(Mean.Distance,2) * KL.Divergence, data = res.data.high)
-summary(test.lm)
-par(mfrow=c(2,2))
-plot(test.lm)
-par(mfrow=c(1,1))
-
-
-
-
-
-
-# # Print DAG for report
-# graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"))
 # 
-# # Print interventional DAG for report
-graphviz.plot(model2network("[S][R|S][G][W|R:G]"), highlight=list(nodes=c("G"), fill="grey", col="black"))
-graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"), highlight = list(arcs = c(from = "S", to = "G"), col="white"))
-
-graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"), highlight = list(nodes=c("G"), arcs = c(from = "S", to = "G"), col=c("white")))
-
-
-# Plot Markov blanket for chapter
-# This is the one from Scutari
-graphviz.plot(model2network("[A][B|A:E][C|A:D][D|A][E|D:F][F|G][G][H|F:I][I][J|H]"), highlight=list(nodes=c("A", "B", "D", "E", "F"), fill=c("grey90", "grey90", "grey90", "grey50", "grey90"), col=c("black", "black","black","black","black")), main="MB(E)")
-# This one is for the chapter
-graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I][K|D:M][L|K:H][M|N:O][N|A][O|N]"), layout="fdp", highlight=list(nodes=c("B", "C", "D", "K", "H", "F", "M"), fill=c("grey90"), col=c("black")), main = "MB(D)")
-
-
-
-# # Plot 2 node network for equivalence
-# graphviz.plot(model2network("[A][B|A]"), layout = "fdp")
-# graphviz.plot(model2network("[A|B][B]"))
-
-
-plot(res.data$Mean.Distance ~ res.data$Samples)
+# 
+# 
+# 
+# 
+# 
+# 
+# low.col = "black"
+# high.col = "yellow"
+# 
+# 
+# # Uncomment the below line if reading the data from a file rather than regenerating.
+# res.data = read.table("newmetric1000samples25rep.txt", sep="\t")
+# res.data = res.data[-c(4,5)]
+# 
+# plot(res.data)
+# 
+# # Plot 
+# ggplot(res.data, aes(x=Samples, y=Mean.Distance, color=log(KL.Divergence))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+# 
+# 
+# # SID ~ Samples LM
+# res.data.high = res.data[100:length(res.data[,1]),]
+# plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
+# SID.lm = lm(Mean.Distance ~ Samples, data = res.data.high)
+# 
+# # Diagnostic plots for SID~Samples Linear model
+# par(mfrow=c(2,2))
+# plot(SID.lm)
+# par(mfrow=c(1,1))
+# 
+# # Polynomial Model?
+# SID.poly.lm = lm(Mean.Distance ~ poly(Samples, 2), data = res.data.high)
+# anova(SID.lm, SID.poly.lm)
+# 
+# # Diagnostic plots for SID~Samples Polynomial model
+# par(mfrow=c(2,2))
+# plot(SID.poly.lm)
+# par(mfrow=c(1,1))
+# 
+# summary(SID.poly.lm)
+# 
+# # Draw quadratic through data
+# # NOT WORKING???
+# prd = data.frame(Samples = seq(from = range(res.data.high$Samples)[1], to = range(res.data.high$Samples)[2], length.out = length(res.data.high$Samples)))
+# plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
+# points(predict(SID.poly.lm, newdata=prd), type='l', col='red')
+# 
+# 
+# 
+# 
+# # KL Divergence ~ Samples LM
+# plot(KL.Divergence ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "Kullback–Leibler Divergence")
+# kl.dist.lm = lm(`KL.Divergence` ~ Samples, data = res.data.high)
+# abline(kl.dist.lm,lwd=2,col=2)
+# 
+# # Diagnostic plots for SID~Samples Linear model
+# par(mfrow=c(2,2))
+# plot(kl.dist.lm)
+# par(mfrow=c(1,1))
+# 
+# summary(kl.dist.lm)
+# 
+# 
+# 
+# ggplot(res.data, aes(x=Samples, y=KL.Divergence, color=Mean.Distance)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
+# 
+# # Can you predict the sample size by how well it works?
+# test.lm = lm(Samples ~ poly(Mean.Distance,2) * KL.Divergence, data = res.data.high)
+# summary(test.lm)
+# par(mfrow=c(2,2))
+# plot(test.lm)
+# par(mfrow=c(1,1))
+# 
+# 
+# 
+# 
+# 
+# 
+# # # Print DAG for report
+# # graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"))
+# # 
+# # # Print interventional DAG for report
+# graphviz.plot(model2network("[S][R|S][G][W|R:G]"), highlight=list(nodes=c("G"), fill="grey", col="black"))
+# graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"), highlight = list(arcs = c(from = "S", to = "G"), col="white"))
+# 
+# graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"), highlight = list(nodes=c("G"), arcs = c(from = "S", to = "G"), col=c("white")))
+# 
+# 
+# # Plot Markov blanket for chapter
+# # This is the one from Scutari
+# graphviz.plot(model2network("[A][B|A:E][C|A:D][D|A][E|D:F][F|G][G][H|F:I][I][J|H]"), highlight=list(nodes=c("A", "B", "D", "E", "F"), fill=c("grey90", "grey90", "grey90", "grey50", "grey90"), col=c("black", "black","black","black","black")), main="MB(E)")
+# # This one is for the chapter
+# graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I][K|D:M][L|K:H][M|N:O][N|A][O|N]"), layout="fdp", highlight=list(nodes=c("B", "C", "D", "K", "H", "F", "M"), fill=c("grey90"), col=c("black")), main = "MB(D)")
+# 
+# 
+# 
+# # # Plot 2 node network for equivalence
+# # graphviz.plot(model2network("[A][B|A]"), layout = "fdp")
+# # graphviz.plot(model2network("[A|B][B]"))
+# 
+# 
+# plot(res.data$Mean.Distance ~ res.data$Samples)
