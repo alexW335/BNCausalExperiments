@@ -79,7 +79,7 @@ SIDMean = function(bn,
 }
 # Specify the network structure
 dag.test = model2network("[A][B][C|A:B][D|B][E|B][G|E][H|C:D]")
-graphviz.plot(dag.test)
+# graphviz.plot(dag.test)
 
 # Label levels
 A.lv = c("a", "-a")
@@ -120,36 +120,37 @@ H.prob = array(c(HgCD, 1-HgCD, HgnCD, 1-HgnCD, HgCnD, 1-HgCnD, HgnCnD, 1-HgnCnD)
 # Create distribution & fit to BN
 loc.dist = list(A = A.prob, B = B.prob, C = C.prob, D = D.prob, E = E.prob, G = G.prob, H = H.prob)
 bn.actual = custom.fit(dag.test, loc.dist)
-# Get rid of the heinous default colours when 
-# displaying the probability distributions for each node
-myColours <- brewer.pal(6,"Greys")
-my.settings <- list(
-    superpose.polygon=list(col=myColours[1], border="transparent"),
-    strip.background=list(col=myColours[1]),
-    plot.polygon=list(col=myColours[2]),
-    strip.border=list(col="black")
-)
-trellis.par.set(my.settings)
-# Display the probability distributions of each node with barcharts.
-prA = bn.fit.barchart(bn.actual$A, main = "P(A)")
-prB = bn.fit.barchart(bn.actual$B, main = "P(B)")
-prC = bn.fit.barchart(bn.actual$C, main = "P(C|A,B)")
-prD = bn.fit.barchart(bn.actual$D, main = "P(D|B)")
-prE = bn.fit.barchart(bn.actual$E, main = "P(E|B)")
-prG = bn.fit.barchart(bn.actual$G, main = "P(G|E)")
-prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
-# This where the data generation takes place. It takes a long time, 
-# but saves the results in a text file.
+
+# # Get rid of the heinous default colours when 
+# # displaying the probability distributions for each node
+# myColours <- brewer.pal(6,"Greys")
+# my.settings <- list(
+#     superpose.polygon=list(col=myColours[1], border="transparent"),
+#     strip.background=list(col=myColours[1]),
+#     plot.polygon=list(col=myColours[2]),
+#     strip.border=list(col="black")
+# )
+# trellis.par.set(my.settings)
+# 
+# # Display the probability distributions of each node with barcharts.
+# prA = bn.fit.barchart(bn.actual$A, main = "P(A)")
+# prB = bn.fit.barchart(bn.actual$B, main = "P(B)")
+# prC = bn.fit.barchart(bn.actual$C, main = "P(C|A,B)")
+# prD = bn.fit.barchart(bn.actual$D, main = "P(D|B)")
+# prE = bn.fit.barchart(bn.actual$E, main = "P(E|B)")
+# prG = bn.fit.barchart(bn.actual$G, main = "P(G|E)")
+# prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
+
+
 # It goes through from i = min to max.number.of.observations, calling SIDMean each time and 
 # instructing it to generate "i" samples, and average the values out over 'repeat.times' times.
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
-repeat.times = 10
+repeat.times = 50
 min.number.of.observations = 1
-max.num.observations = 500
-# repeat.times = 5
-# min.number.of.observations = 50
-# max.num.observations = 100
+max.num.observations = 2000
+
+
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
                       vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
 colnames(res.data) = c("Samples", "Mean SID", "Lower", "Upper")
@@ -159,18 +160,6 @@ sfunct = function(i){
     return(v[1])
 }
 
-c=1
-# for (i in seq(from = min.number.of.observations, to = max.num.observations)){
-#     print(i)
-#     res.data[c, 1] = i
-#     # s = SIDMean(bn.actual, i, times.to.repeat = repeat.times)
-#     s = sfunct(i)
-#     res.data[c, 2] = s[1]
-#     res.data[c, 3] = s[2]
-#     res.data[c, 4] = s[3]
-#     
-#     c = c + 1
-# }
 storeda = seq(from = min.number.of.observations, to = max.num.observations)
 
 # Calculate the number of cores
@@ -185,113 +174,9 @@ clusterExport(cl, list("SIDMean", "bn.actual", "repeat.times", "rbn", "rsmax2",
 res.data = parLapply(cl, storeda, fun=sfunct)
 stopCluster(cl)
 
-# Run below line if generating new data to stop log-problems. 
-# Will lose some low-sample data points.
+
 # res.data = res.data[is.finite(rowSums(res.data))]
 plot(x=seq(from = min.number.of.observations, to = max.num.observations), y=res.data, pch ="+", xlab = "Samples", ylab = "SID")
-# ggplot(res.data, aes('Samples', 'Mean SID')) + geom_ribbon(aes(ymin = res.data[,3], ymax = res.data[,4]), fill = "grey70") + geom_line()
+
 # list.save(res.data, 'list.rdata')
 # check = list.load("list.rdata")
-# 
-# 
-# 
-# 
-# 
-# 
-# 
-# low.col = "black"
-# high.col = "yellow"
-# 
-# 
-# # Uncomment the below line if reading the data from a file rather than regenerating.
-# res.data = read.table("newmetric1000samples25rep.txt", sep="\t")
-# res.data = res.data[-c(4,5)]
-# 
-# plot(res.data)
-# 
-# # Plot 
-# ggplot(res.data, aes(x=Samples, y=Mean.Distance, color=log(SID.Divergence))) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
-# 
-# 
-# # SID ~ Samples LM
-# res.data.high = res.data[100:length(res.data[,1]),]
-# plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
-# SID.lm = lm(Mean.Distance ~ Samples, data = res.data.high)
-# 
-# # Diagnostic plots for SID~Samples Linear model
-# par(mfrow=c(2,2))
-# plot(SID.lm)
-# par(mfrow=c(1,1))
-# 
-# # Polynomial Model?
-# SID.poly.lm = lm(Mean.Distance ~ poly(Samples, 2), data = res.data.high)
-# anova(SID.lm, SID.poly.lm)
-# 
-# # Diagnostic plots for SID~Samples Polynomial model
-# par(mfrow=c(2,2))
-# plot(SID.poly.lm)
-# par(mfrow=c(1,1))
-# 
-# summary(SID.poly.lm)
-# 
-# # Draw quadratic through data
-# # NOT WORKING???
-# prd = data.frame(Samples = seq(from = range(res.data.high$Samples)[1], to = range(res.data.high$Samples)[2], length.out = length(res.data.high$Samples)))
-# plot(Mean.Distance ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "SID")
-# points(predict(SID.poly.lm, newdata=prd), type='l', col='red')
-# 
-# 
-# 
-# 
-# # SID Divergence ~ Samples LM
-# plot(SID.Divergence ~ Samples, data = res.data.high, pch ="+", xlab = "Samples", ylab = "Kullback–Leibler Divergence")
-# SID.dist.lm = lm(`SID.Divergence` ~ Samples, data = res.data.high)
-# abline(SID.dist.lm,lwd=2,col=2)
-# 
-# # Diagnostic plots for SID~Samples Linear model
-# par(mfrow=c(2,2))
-# plot(SID.dist.lm)
-# par(mfrow=c(1,1))
-# 
-# summary(SID.dist.lm)
-# 
-# 
-# 
-# ggplot(res.data, aes(x=Samples, y=SID.Divergence, color=Mean.Distance)) + geom_point() + scale_color_gradient(low=low.col, high=high.col)
-# 
-# # Can you predict the sample size by how well it works?
-# test.lm = lm(Samples ~ poly(Mean.Distance,2) * SID.Divergence, data = res.data.high)
-# summary(test.lm)
-# par(mfrow=c(2,2))
-# plot(test.lm)
-# par(mfrow=c(1,1))
-# 
-# 
-# 
-# 
-# 
-# 
-# # # Print DAG for report
-# # graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"))
-# # 
-# # # Print interventional DAG for report
-# graphviz.plot(model2network("[S][R|S][G][W|R:G]"), highlight=list(nodes=c("G"), fill="grey", col="black"))
-# graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"), highlight = list(arcs = c(from = "S", to = "G"), col="white"))
-# 
-# graphviz.plot(model2network("[S][R|S][G|S][W|R:G]"), highlight = list(nodes=c("G"), arcs = c(from = "S", to = "G"), col=c("white")))
-# 
-# 
-# # Plot Markov blanket for chapter
-# # This is the one from Scutari
-# graphviz.plot(model2network("[A][B|A:E][C|A:D][D|A][E|D:F][F|G][G][H|F:I][I][J|H]"), highlight=list(nodes=c("A", "B", "D", "E", "F"), fill=c("grey90", "grey90", "grey90", "grey50", "grey90"), col=c("black", "black","black","black","black")), main="MB(E)")
-# # This one is for the chapter
-# graphviz.plot(model2network("[A][B|A][C|A][D|B:C][E|C][I|E][H|D:F][F][G|F][J|G:I][K|D:M][L|K:H][M|N:O][N|A][O|N]"), layout="fdp", highlight=list(nodes=c("B", "C", "D", "K", "H", "F", "M"), fill=c("grey90"), col=c("black")), main = "MB(D)")
-# 
-# 
-# 
-# # # Plot 2 node network for equivalence
-# # graphviz.plot(model2network("[A][B|A]"), layout = "fdp")
-# # graphviz.plot(model2network("[A|B][B]"))
-# 
-# 
-# plot(res.data$Mean.Distance ~ res.data$Samples)
