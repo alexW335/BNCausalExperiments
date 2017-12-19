@@ -149,8 +149,8 @@ bn.actual = custom.fit(dag.test, loc.dist)
 # compares to the original BN.
 repeat.times = 50
 min.number.of.observations = 1
-max.num.observations = 2000
-step.size = 1
+max.num.observations = 5000
+step.size = 10
 
 
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
@@ -180,7 +180,32 @@ stopCluster(cl)
 # res.data = res.data[is.finite(rowSums(res.data))]
 res.data = unlist(res.data)
 pts = data.frame(Samples=storeda, SID=res.data)
-plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "", data = pts)
-plot(log(SID) ~ Samples, pch =".", xlab = "Samples", ylab = "log(SID)", data = pts)
+# write.table(pts, 'datagen.txt')
 
-write.table(pts, 'datagen.txt')
+plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
+plot(log(SID) ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "log(SID) ~ Samples 500:2000", data = pts)
+
+tlm = lm(log(SID) ~ Samples, data = pts[500:2000,])
+plm = lm(log(SID) ~ poly(Samples, 5), data = pts[500:2000,])
+anova(tlm, plm)
+
+summary(plm)
+
+par(mfrow=c(2,2))
+plot(plm)
+par(mfrow=c(1,1))
+
+
+
+plm = lm(SID ~ poly(Samples, 21), data = pts)
+summary(plm)
+
+step(plm)
+
+par(mfrow=c(2,2))
+plot(plm)
+par(mfrow=c(1,1))
+
+
+
+
