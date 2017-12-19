@@ -151,9 +151,9 @@ prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
 # This way we get to see how a BN generated from 1,2,3,4,...,max.number.of.observations samples
 # compares to the original BN.
 
-repeat.times = 5
-min.number.of.observations = 50
-max.num.observations = 150
+repeat.times = 10
+min.number.of.observations = 1
+max.num.observations = 1000
 
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
                       vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
