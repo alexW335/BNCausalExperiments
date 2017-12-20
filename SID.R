@@ -232,7 +232,7 @@ h = ggplot(pts, aes(x=Samples, y=SID)) + geom_line() + geom_ribbon(aes(ymin = SI
 print(h)    
 
 
-g = meanGraph(bn.actual, 500, 50)
+g = meanGraph(bn.actual, 2500, 50)
 rownames(g) = c('A', 'B', 'C', 'D', 'E', 'G', 'H')
 colnames(g) = c('A', 'B', 'C', 'D', 'E', 'G', 'H')
 net = graph_from_adjacency_matrix(g, mode="directed",weighted=TRUE)
