@@ -232,6 +232,15 @@ h = ggplot(pts, aes(x=Samples, y=SID)) + geom_line() + geom_ribbon(aes(ymin = SI
 print(h)    
 
 
+g = meanGraph(bn.actual, 5000, 50)
+rownames(g) = c('A', 'B', 'C', 'D', 'E', 'G', 'H')
+colnames(g) = c('A', 'B', 'C', 'D', 'E', 'G', 'H')
+net = graph_from_adjacency_matrix(g, mode="directed",weighted=TRUE)
+
+plot(net,vertex.label=V(net)$name, 
+            edge.color="black", edge.label=NA,
+            edge.width=exp(E(net)$weight), vertex.color="white", vertex.size=25,
+            label.color="black", layout = matrix(c(0,2,1,2,3,2,1,2,2,1,1,1,0,0), nrow=7, ncol=2))
 
 
 ################## MODEL FITTING ################## 
