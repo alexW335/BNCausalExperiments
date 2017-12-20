@@ -230,23 +230,22 @@ print(h)
 
 
 #################### AVERAGE GRAPH ####################
-num.to.average = 100
+num.to.average = 1000
+num.samples = 2505
 
-detectCores()
 no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
-clusterExport(cl, list("meanGraph", "rbn", "rsmax2", "bn.fit", "bn.actual"))
-graphs = parLapply(cl, seq(1, num.to.average), fun=function(i) meanGraph(bn.actual, 2500))
+clusterExport(cl, list("meanGraph", "rbn", "rsmax2", "bn.fit", "bn.actual", "num.samples"))
+graphs = parLapply(cl, seq(1, num.to.average), fun=function(i) meanGraph(bn.actual, num.samples))
 stopCluster(cl)
 
-g = Reduce('+', graphs)
-g = g/num.to.average
-
+g = Reduce('+', graphs)/num.to.average
+g
 net = graph_from_adjacency_matrix(g, mode="directed",weighted=TRUE)
 
 plot(net,vertex.label=V(net)$name, 
-     edge.color=rgb(E(net)$weight, 0, 1-E(net)$weight),
-     arrow.color=rgb(E(net)$weight, 0, 1-E(net)$weight), 
+     edge.color=rgb(E(net)$weight, 0, 1-E(net)$weight, (E(net)$weight + 1)/2),
+     arrow.color=rgb(E(net)$weight, 0, 1-E(net)$weight, (E(net)$weight + 1)/2), 
      edge.label=NA, edge.width=3, vertex.color="white", vertex.size=25, autocurve.edges=T,
      label.color="black", layout = matrix(c(0,2,1,2,3,2,1,2,2,1,1,1,0,0), nrow=7, ncol=2))
 
