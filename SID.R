@@ -12,6 +12,7 @@ library(SID)
 library(parallel)
 library(rlist)
 library(gam)
+library(stats)
 
 
 # install.packages("SID", lib = "H:/My Documents/libs")
@@ -32,8 +33,6 @@ c.cur.lv = "c"
 # These are calculated "times.to.repeat" times, and then averaged,
 # where a fresh BN is reconstructed each time on the same number of
 # samples.
-# It also finds (exactly) the probabilities P(D|A) and P(D|~A), 
-# however only once as it can be quite expensive to do.
 SIDMean = function(bn,
                    num.samples.to.gen,
                    times.to.repeat = 1,
@@ -41,9 +40,7 @@ SIDMean = function(bn,
                    score.funct = "bde",
                    param.learn.method = "mle"){
     # Holds running sum of graph edit distances
-    sumSID = 0
-    sup = 0
-    sdown = 0
+    sdev = c()
     
     # Create an adjacency matrix for the original BN
     bn.am = as(bnlearn::as.graphNEL(bn), "matrix")
@@ -72,13 +69,47 @@ SIDMean = function(bn,
         # Try using Structural Intervention Distance rather than GED
         sidout = structIntervDist(bn.am, lrnd.am)
         
-        sumSID = sumSID + sidout$sid
-        sup    = sup    + sidout$sidUpperBound
-        sdown  = sdown  + sidout$sidLowerBound
+        sdev[i] = sidout$sid
         
     }
+    return(c(mean(sdev), sd(sdev)))
+}
+
+meanGraph = function(bn,
+                   num.samples.to.gen,
+                   times.to.repeat = 1,
+                   test.funct = "x2",
+                   score.funct = "bde",
+                   param.learn.method = "mle"){
     
-    return(c(sumSID, sdown, sup)/times.to.repeat)
+    # Create an adjacency matrix for the original BN
+    bn.am = as(bnlearn::as.graphNEL(bn), "matrix")
+    
+    avmat = matrix(0L, nrow=dim(bn.am)[1], ncol=dim(bn.am)[2])
+    
+    for (i in 1:times.to.repeat){
+        # Randomly generate 'num.samples.to.gen' samples from the original BN.
+        gen.samples = rbn(bn, num.samples.to.gen)
+        
+        # Learn BN structure from those samples using the restrict-maximise heuristic.
+        # Semi-parametric X2 test used for independence (restrict phase).
+        # Inter-Associative Markov Blanket (IAMB) used to find the markov blanket of each node, as it is 
+        # fast and reasonably accurate and easy to understand.
+        # Bayesian Information Criterion score used in the maximise phase - good score of how well the
+        # network fits the data, penalises for having too many edges.
+        # Hill-climbing algorithm used to explore restricted search-space.
+        # Denis & Scutari has good explanation of rsmax2.
+        cust = rsmax2(gen.samples, restrict="iamb", maximize = "hc")
+        
+        # Learn BN parameters with simple Maximum Likelihood Estimate method.
+        bn.lnd.mle = bn.fit(cust, data = gen.samples, method = "mle")
+        
+        # Generate adjacency matrix for learned network
+        lrnd.am = as(bnlearn::as.graphNEL(bn.lnd.mle), "matrix")
+        avmat = avmat + lrnd.am
+ 
+    }
+    return(avmat/times.to.repeat)
 }
 # Specify the network structure
 dag.test = model2network("[A][B][C|A:B][D|B][E|B][G|E][H|C:D]")
@@ -151,8 +182,8 @@ bn.actual = custom.fit(dag.test, loc.dist)
 # compares to the original BN.
 repeat.times = 50
 min.number.of.observations = 1
-max.num.observations = 5000
-step.size = 10
+max.num.observations = 2500
+step.size = 25
 
 
 res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
@@ -161,7 +192,7 @@ colnames(res.data) = c("Samples", "Mean SID", "Lower", "Upper")
 
 sfunct = function(i){
     v = SIDMean(bn.actual, i, repeat.times)
-    return(v[1])
+    return(c(v[1], v[2]))
 }
 
 storeda = seq(from = min.number.of.observations, to = max.num.observations, by=step.size)
@@ -176,19 +207,34 @@ clusterExport(cl, list("SIDMean", "bn.actual", "repeat.times", "rbn", "rsmax2",
                        "bn.fit", "structIntervDist"))
 
 res.data = parLapply(cl, storeda, fun=sfunct)
+
+sdevs = lapply(seq(1,length(storeda)), function(i) res.data[[i]][2])
+sdevs = unlist(sdevs)
+res.data = lapply(seq(length(storeda)), function(i) res.data[[i]][1])
+res.data = unlist(res.data)
 stopCluster(cl)
+
+# write.table(pts, 'datagen.txt')
+# pts = read.table("datagen.txt")
 
 
 # res.data = res.data[is.finite(rowSums(res.data))]
-res.data = unlist(res.data)
-pts = data.frame(Samples=storeda, SID=res.data)
-# write.table(pts, 'datagen.txt')
+
+pts = data.frame(Samples=storeda, SID=res.data, SDev=sdevs)
 
 plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
 plot(log(SID) ~ Samples, pch ="+", xlab = "Samples", ylab = "log(SID)", main = "log(SID) ~ Samples 500:2000", data = pts)
 
 tail(pts)
 
+
+h = ggplot(pts, aes(x=Samples, y=SID)) + geom_line() + geom_ribbon(aes(ymin = SID - 1.96*SDev, ymax = SID + 1.96*SDev, x = Samples, fill="band"), alpha = 0.3) 
+print(h)    
+
+
+
+
+################## MODEL FITTING ################## 
 tlm = lm(log(SID) ~ Samples, data = pts[500:2000,])
 plm = lm(log(SID) ~ poly(Samples, 5), data = pts[500:2000,])
 anova(tlm, plm)
@@ -199,12 +245,9 @@ par(mfrow=c(2,2))
 plot(plm)
 par(mfrow=c(1,1))
 
-
-
-# pts = read.table("datagen.txt")
-
 # Try a GAM
 gm = gam(SID ~ s(Samples), data = pts)
+gm$coefficients
 summary(gm)
 
 plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
