@@ -81,36 +81,32 @@ meanGraph = function(bn,
                    test.funct = "x2",
                    score.funct = "bde",
                    param.learn.method = "mle"){
+
+    # Randomly generate 'num.samples.to.gen' samples from the original BN.
+    gen.samples = rbn(bn, num.samples.to.gen)
     
-    # Create an adjacency matrix for the original BN
     bn.am = as(bnlearn::as.graphNEL(bn), "matrix")
     
-    avmat = matrix(0L, nrow=dim(bn.am)[1], ncol=dim(bn.am)[2])
+    # Learn BN structure from those samples using the restrict-maximise heuristic.
+    # Semi-parametric X2 test used for independence (restrict phase).
+    # Inter-Associative Markov Blanket (IAMB) used to find the markov blanket of each node, as it is 
+    # fast and reasonably accurate and easy to understand.
+    # Bayesian Information Criterion score used in the maximise phase - good score of how well the
+    # network fits the data, penalises for having too many edges.
+    # Hill-climbing algorithm used to explore restricted search-space.
+    # Denis & Scutari has good explanation of rsmax2.
+    cust = rsmax2(gen.samples, restrict="iamb", maximize = "hc")
     
-    for (i in 1:times.to.repeat){
-        # Randomly generate 'num.samples.to.gen' samples from the original BN.
-        gen.samples = rbn(bn, num.samples.to.gen)
-        
-        # Learn BN structure from those samples using the restrict-maximise heuristic.
-        # Semi-parametric X2 test used for independence (restrict phase).
-        # Inter-Associative Markov Blanket (IAMB) used to find the markov blanket of each node, as it is 
-        # fast and reasonably accurate and easy to understand.
-        # Bayesian Information Criterion score used in the maximise phase - good score of how well the
-        # network fits the data, penalises for having too many edges.
-        # Hill-climbing algorithm used to explore restricted search-space.
-        # Denis & Scutari has good explanation of rsmax2.
-        cust = rsmax2(gen.samples, restrict="iamb", maximize = "hc")
-        
-        # Learn BN parameters with simple Maximum Likelihood Estimate method.
-        bn.lnd.mle = bn.fit(cust, data = gen.samples, method = "mle")
-        
-        # Generate adjacency matrix for learned network
-        lrnd.am = as(bnlearn::as.graphNEL(bn.lnd.mle), "matrix")
-        avmat = avmat + lrnd.am
+    # Learn BN parameters with simple Maximum Likelihood Estimate method.
+    bn.lnd.mle = bn.fit(cust, data = gen.samples, method = "mle")
+    
+    # Generate adjacency matrix for learned network
+    lrnd.am = as(bnlearn::as.graphNEL(bn.lnd.mle), "matrix")
  
-    }
-    return(avmat/times.to.repeat)
+    return(lrnd.am)
 }
+
+
 # Specify the network structure
 dag.test = model2network("[A][B][C|A:B][D|B][E|B][G|E][H|C:D]")
 # graphviz.plot(dag.test)
@@ -232,21 +228,29 @@ h = ggplot(pts, aes(x=Samples, y=SID)) + geom_line() + geom_ribbon(aes(ymin = SI
 print(h)    
 
 
-g = meanGraph(bn.actual, 2500, 50)
-rownames(g) = c('A', 'B', 'C', 'D', 'E', 'G', 'H')
-colnames(g) = c('A', 'B', 'C', 'D', 'E', 'G', 'H')
+
+#################### AVERAGE GRAPH ####################
+num.to.average = 100
+
+detectCores()
+no_cores <- detectCores() - 1
+cl <- makeCluster(no_cores)
+clusterExport(cl, list("meanGraph", "rbn", "rsmax2", "bn.fit", "bn.actual"))
+graphs = parLapply(cl, seq(1, num.to.average), fun=function(i) meanGraph(bn.actual, 2500))
+stopCluster(cl)
+
+g = Reduce('+', graphs)
+g = g/num.to.average
+
 net = graph_from_adjacency_matrix(g, mode="directed",weighted=TRUE)
 
-# plot(net,vertex.label=V(net)$name, 
-#             edge.color="black", edge.label=E(net)$weight,
-#             edge.width=E(net)$weight, vertex.color="white", vertex.size=25,
-#             label.color="black", layout = matrix(c(0,2,1,2,3,2,1,2,2,1,1,1,0,0), nrow=7, ncol=2))
-
 plot(net,vertex.label=V(net)$name, 
-     edge.color=rgb(1-E(net)$weight, 1-E(net)$weight, 1-E(net)$weight),
-     arrow.color=rgb(1-E(net)$weight, 1-E(net)$weight, 1-E(net)$weight), 
+     edge.color=rgb(E(net)$weight, 0, 1-E(net)$weight),
+     arrow.color=rgb(E(net)$weight, 0, 1-E(net)$weight), 
      edge.label=NA, edge.width=3, vertex.color="white", vertex.size=25, autocurve.edges=T,
      label.color="black", layout = matrix(c(0,2,1,2,3,2,1,2,2,1,1,1,0,0), nrow=7, ncol=2))
+
+
 
 ################## MODEL FITTING ################## 
 tlm = lm(log(SID) ~ Samples, data = pts[500:2000,])
