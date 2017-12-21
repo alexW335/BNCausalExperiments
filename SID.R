@@ -112,6 +112,11 @@ meanGraph = function(bn,
 
 # Specify the network structure
 dag.test = model2network("[A][B][C|A:B][D|B][E|B][G|E][H|C:D]")
+# dag.plt = graph_from_adjacency_matrix(as(bnlearn::as.graphNEL(dag.test), "matrix"))
+# plot(dag.plt, vertex.label=V(dag.plt)$name, edge.color="black",
+#      edge.label=NA, edge.width=3, vertex.color="white", vertex.size=30,
+#      label.color="black", layout = matrix(c(0,2,0,2,3,2,1,2,2,1,1,1,0,0), nrow=7, ncol=2))
+
 # graphviz.plot(dag.test)
 
 # Label levels
@@ -234,7 +239,7 @@ print(h)
 
 #################### AVERAGE GRAPH ####################
 num.to.average = 1000
-num.samples = 2500
+num.samples = 100
 
 no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
@@ -259,7 +264,7 @@ cutoff = function(p){
     return(t)
 }
 cls = lapply(E(net)$weight, FUN = cutoff)
-plot(net,vertex.label=V(net)$name, main=sprintf("Average DAG From %d Samples", num.samples),
+plot(net,vertex.label=V(net)$name, 
      edge.color=rgb(cls, cls, cls, lapply(cls, function(x) 1-x)),
      arrow.color=rgb(cls, cls, cls, lapply(cls, function(x) 1-x)),  
      edge.label=NA, edge.width=3, vertex.color="white", vertex.size=25, autocurve.edges=T,
