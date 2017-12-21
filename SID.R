@@ -391,14 +391,15 @@ stepslook = seq(from = 1, to = 1500, by = 50)
 dat = lapply(stepslook, FUN = tf)
 stopCluster(cl)
 
-dat[[2]]
-
 d = lapply(dat, function(i) c(i))
 d = sapply(d, function(i) unlist(i))
 
-par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE)
+# matplot(stepslook, t(d[-c(15,16,45,23,30,40,46),]), type='l', col='black', lty=1, ylim=c(0,1), main="Confidence for ")
 
-plot(d[15,] ~ stepslook, type='l', xlab="Samples", ylab="Confidence")
+
+par(mar=c(5.1, 4.1, 4.1, 10), xpd=TRUE)
+
+plot(d[15,] ~ stepslook, type='l', xlab="Samples", ylab="Confidence", main="Confidence in Edges by Number of Samples")
 points(d[16,] ~ stepslook, type='l', col="red")
 points(d[45,] ~ stepslook, type='l', col="blue")
 points(d[23,] ~ stepslook, type='l', col="green")
@@ -406,8 +407,13 @@ points(d[30,] ~ stepslook, type='l', col="cyan")
 points(d[40,] ~ stepslook, type='l', col="yellow")
 points(d[46,] ~ stepslook, type='l', col="magenta")
 
-legend("topright", inset=c(-0.4,0),
-       c("A->C", "B->C", "C->H", "B->D", "B->E", "E->G", "D->H"),
+matpoints(stepslook, t(d[-c(15,16,45,23,30,40,46),]), type='l', col='grey50', lty=1)
+
+
+legend("topright", inset=c(-0.5,0),
+       c("A -> C", "B -> C", "C -> H", "B -> D", "B -> E", "E -> G", "D -> H", "False Edges"),
        lty=1,
        lwd=1,
-       col=c("black", "red", "blue", "green", "cyan", "yellow", "magenta"))
+       col=c("black", "red", "blue", "green", "cyan", "yellow", "magenta", "grey50"))
+
+
