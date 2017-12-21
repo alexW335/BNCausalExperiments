@@ -222,7 +222,7 @@ stopCluster(cl)
 pts = data.frame(Samples=storeda, SID=res.data, SDev=sdevs)
 
 plot(SID ~ Samples, pch ="+", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
-plot(log(SID) ~ Samples, pch ="+", xlab = "Samples", ylab = "log(SID)", main = "log(SID) ~ Samples 500:2000", data = pts)
+plot(log(SID) ~ Samples, pch ="+", xlab = "Samples", ylab = "log(SID)", main = "log(SID) ~ Samples", data = pts)
 
 tail(pts)
 
@@ -234,7 +234,7 @@ print(h)
 
 #################### AVERAGE GRAPH ####################
 num.to.average = 1000
-num.samples = 100
+num.samples = 2500
 
 no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
