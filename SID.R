@@ -353,7 +353,7 @@ print(h)
 
 #################### AVERAGE GRAPH - FOUR NODE ####################
 num.to.average = 1000
-num.samples = 100
+num.samples = 2500
 
 no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
