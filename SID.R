@@ -13,6 +13,9 @@ library(parallel)
 library(rlist)
 library(gam)
 library(stats)
+library(mgcv)
+
+set.seed(2017)
 
 
 # install.packages("SID", lib = "H:/My Documents/libs")
@@ -218,20 +221,20 @@ stopCluster(cl)
 
 pts = data.frame(Samples=storeda, SID=res.data, SDev=sdevs)
 
-plot(SID ~ Samples, pch =".", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
+plot(SID ~ Samples, pch ="+", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts)
 plot(log(SID) ~ Samples, pch ="+", xlab = "Samples", ylab = "log(SID)", main = "log(SID) ~ Samples 500:2000", data = pts)
 
 tail(pts)
 
 
-h = ggplot(pts, aes(x=Samples, y=SID)) + geom_line() + geom_ribbon(aes(ymin = SID - 1.96*SDev, ymax = SID + 1.96*SDev, x = Samples, fill="band"), alpha = 0.3) 
+h = ggplot(pts, aes(x=Samples, y=SID)) + ggtitle("SID as a Function of Sample Size With 1 SD Bands") + geom_line() + geom_ribbon(aes(ymin = SID - SDev, ymax = SID + SDev, x = Samples), alpha = 0.3, show.legend=T) 
 print(h)    
 
 
 
 #################### AVERAGE GRAPH ####################
 num.to.average = 1000
-num.samples = 2505
+num.samples = 100
 
 no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
@@ -242,26 +245,29 @@ stopCluster(cl)
 g = Reduce('+', graphs)/num.to.average
 g
 net = graph_from_adjacency_matrix(g, mode="directed",weighted=TRUE)
-
-plot(net,vertex.label=V(net)$name, 
-     edge.color=rgb(E(net)$weight, 0, 1-E(net)$weight, (E(net)$weight + 1)/2),
-     arrow.color=rgb(E(net)$weight, 0, 1-E(net)$weight, (E(net)$weight + 1)/2), 
+cutoff = function(p){
+    t=0
+    if (p < 0.05){
+        t=1
+    }
+    if ((p > 0.05) && (p<0.5)){
+        t=0.5
+    }
+    if (p > 0.5){
+        t=0.1
+    }
+    return(t)
+}
+cls = lapply(E(net)$weight, FUN = cutoff)
+plot(net,vertex.label=V(net)$name, main=sprintf("Average DAG From %d Samples", num.samples),
+     edge.color=rgb(cls, cls, cls, lapply(cls, function(x) 1-x)),
+     arrow.color=rgb(cls, cls, cls, lapply(cls, function(x) 1-x)),  
      edge.label=NA, edge.width=3, vertex.color="white", vertex.size=25, autocurve.edges=T,
-     label.color="black", layout = matrix(c(0,2,1,2,3,2,1,2,2,1,1,1,0,0), nrow=7, ncol=2))
+     label.color="black", layout = matrix(c(0,2,0,2,3,2,1,2,2,1,1,1,0,0), nrow=7, ncol=2))
 
 
 
 ################## MODEL FITTING ################## 
-tlm = lm(log(SID) ~ Samples, data = pts[500:2000,])
-plm = lm(log(SID) ~ poly(Samples, 5), data = pts[500:2000,])
-anova(tlm, plm)
-
-summary(plm)
-
-par(mfrow=c(2,2))
-plot(plm)
-par(mfrow=c(1,1))
-
 # Try a GAM
 gm = gam(SID ~ s(Samples), data = pts)
 gm$coefficients
@@ -275,3 +281,133 @@ par(mfrow=c(2,2))
 gam.check(gm)
 par(mfrow=c(1,1))
 
+
+
+
+
+################## 4 NODE BN ##################
+
+dag.test = model2network("[A][B|A][C|A][D|B:C]")
+# graphviz.plot(dag.test)
+
+# Label levels
+A.lv = c("a", "-a")
+B.lv = c("b", "-b")
+C.lv = c("c", "-c")
+D.lv = c("d", "-d")
+
+# Arbitrarily define priors
+A.true    = 0.40
+B.A.true  = 0.70
+B.nA.true = 0.30
+C.A.true  = 0.20
+C.nA.true = 0.80
+
+# Assign to arrays
+A.prob = array(c(A.true, 1 - A.true), dim = 2, dimnames = list(A = A.lv))
+B.prob = array(c(B.A.true, 1 - B.A.true, B.nA.true, 1-B.nA.true), dim = c(2, 2), dimnames = list(B = B.lv, A = A.lv))
+C.prob = array(c(C.A.true, 1 - C.A.true, C.nA.true, 1-C.nA.true), dim = c(2, 2), dimnames = list(C = C.lv, A = A.lv))
+D.prob = array(c(0.1, 0.9, 0.8, 0.2, 0.4, 0.6, 0.7, 0.3), dim=c(2,2,2), dimnames = list(D = D.lv, B = B.lv, C = C.lv))
+
+# Create distribution & fit to BN
+loc.dist = list(A = A.prob, B = B.prob, C = C.prob, D = D.prob)
+bn.fournode = custom.fit(dag.test, loc.dist)
+
+repeat.times = 50
+min.number.of.observations = 1
+max.num.observations = 2500
+step.size = 25
+
+res.data = data.frame(seq(from = min.number.of.observations, to = max.num.observations), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1),
+                      vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1), vector(mode = "numeric", length = max.num.observations - min.number.of.observations + 1))
+colnames(res.data) = c("Samples", "Mean SID", "Lower", "Upper")
+
+sfunct = function(i){
+    v = SIDMean(bn.fournode, i, repeat.times)
+    return(c(v[1], v[2]))
+}
+
+storeda4 = seq(from = min.number.of.observations, to = max.num.observations, by=step.size)
+
+detectCores()
+no_cores <- detectCores() - 1
+cl <- makeCluster(no_cores)
+clusterExport(cl, list("SIDMean", "bn.fournode", "repeat.times", "rbn", "rsmax2",
+                       "bn.fit", "structIntervDist"))
+
+res.data4 = parLapply(cl, storeda4, fun=sfunct)
+
+sdevs4 = lapply(seq(1,length(storeda4)), function(i) res.data4[[i]][2])
+sdevs4 = unlist(sdevs4)
+res.data4 = lapply(seq(length(storeda4)), function(i) res.data4[[i]][1])
+res.data4 = unlist(res.data4)
+stopCluster(cl)
+
+pts4 = data.frame(Samples=storeda4, SID=res.data4, SDev=sdevs4)
+
+plot(SID ~ Samples, pch ="+", xlab = "Samples", ylab = "SID", main = "SID ~ Samples", data = pts4)
+plot(log(SID) ~ Samples, pch ="+", xlab = "Samples", ylab = "log(SID)", main = "log(SID) ~ Samples", data = pts4)
+
+h = ggplot(pts4, aes(x=Samples, y=SID)) + ggtitle("SID as a Function of Sample Size With 1 SD Bands") + geom_line() + geom_ribbon(aes(ymin = SID - SDev, ymax = SID + SDev, x = Samples), alpha = 0.3, show.legend=T) 
+print(h)    
+
+#################### AVERAGE GRAPH - FOUR NODE ####################
+num.to.average = 1000
+num.samples = 100
+
+no_cores <- detectCores() - 1
+cl <- makeCluster(no_cores)
+clusterExport(cl, list("meanGraph", "rbn", "rsmax2", "bn.fit", "bn.fournode", "num.samples"))
+graphs = parLapply(cl, seq(1, num.to.average), fun=function(i) meanGraph(bn.fournode, num.samples))
+stopCluster(cl)
+
+g = Reduce('+', graphs)/num.to.average
+g
+net = graph_from_adjacency_matrix(g, mode="directed",weighted=TRUE)
+
+
+cls = lapply(E(net)$weight, FUN = cutoff)
+plot(net,vertex.label=V(net)$name, main=sprintf("Average DAG From %d Samples", num.samples),
+     edge.color=rgb(cls, cls, cls, lapply(cls, function(x) 1-x)),
+     arrow.color=rgb(cls, cls, cls, lapply(cls, function(x) 1-x)), 
+     edge.label=NA, edge.width=3, vertex.color="white", vertex.size=25, autocurve.edges=T,
+     label.color="black", layout = matrix(c(1,0,2,1,3,2,2,1), nrow=4, ncol=2))
+
+
+#################### EDGES PLOT DATA GEN ####################
+
+
+num.to.average = 150
+
+tf = function(num.samples){
+    graphs = parLapply(cl, seq(1, num.to.average), fun=function(i) meanGraph(bn.actual, num.samples))
+    g = Reduce('+', graphs)/num.to.average
+    return(g)
+}
+no_cores <- detectCores() - 1
+cl <- makeCluster(no_cores)
+clusterExport(cl, list("meanGraph", "rbn", "rsmax2", "bn.fit", "bn.actual", "num.samples"))
+stepslook = seq(from = 1, to = 1500, by = 50)
+dat = lapply(stepslook, FUN = tf)
+stopCluster(cl)
+
+dat[[2]]
+
+d = lapply(dat, function(i) c(i))
+d = sapply(d, function(i) unlist(i))
+
+par(mar=c(5.1, 4.1, 4.1, 8.1), xpd=TRUE)
+
+plot(d[15,] ~ stepslook, type='l', xlab="Samples", ylab="Confidence")
+points(d[16,] ~ stepslook, type='l', col="red")
+points(d[45,] ~ stepslook, type='l', col="blue")
+points(d[23,] ~ stepslook, type='l', col="green")
+points(d[30,] ~ stepslook, type='l', col="cyan")
+points(d[40,] ~ stepslook, type='l', col="yellow")
+points(d[46,] ~ stepslook, type='l', col="magenta")
+
+legend("topright", inset=c(-0.4,0),
+       c("A->C", "B->C", "C->H", "B->D", "B->E", "E->G", "D->H"),
+       lty=1,
+       lwd=1,
+       col=c("black", "red", "blue", "green", "cyan", "yellow", "magenta"))
