@@ -29,9 +29,7 @@ a.cur.lv = "a"
 b.cur.lv = "b"
 c.cur.lv = "c"
 
-# This calculates the SID-Divergence from the
-# probability distribution associated with the original BN to the 
-# one reconstructed from the data. It also calculates the 
+# This calculates the 
 # SID between the original struture and the reconstructed one.
 # These are calculated "times.to.repeat" times, and then averaged,
 # where a fresh BN is reconstructed each time on the same number of
@@ -159,25 +157,7 @@ H.prob = array(c(HgCD, 1-HgCD, HgnCD, 1-HgnCD, HgCnD, 1-HgCnD, HgnCnD, 1-HgnCnD)
 loc.dist = list(A = A.prob, B = B.prob, C = C.prob, D = D.prob, E = E.prob, G = G.prob, H = H.prob)
 bn.actual = custom.fit(dag.test, loc.dist)
 
-# # Get rid of the heinous default colours when 
-# # displaying the probability distributions for each node
-# myColours <- brewer.pal(6,"Greys")
-# my.settings <- list(
-#     superpose.polygon=list(col=myColours[1], border="transparent"),
-#     strip.background=list(col=myColours[1]),
-#     plot.polygon=list(col=myColours[2]),
-#     strip.border=list(col="black")
-# )
-# trellis.par.set(my.settings)
-# 
-# # Display the probability distributions of each node with barcharts.
-# prA = bn.fit.barchart(bn.actual$A, main = "P(A)")
-# prB = bn.fit.barchart(bn.actual$B, main = "P(B)")
-# prC = bn.fit.barchart(bn.actual$C, main = "P(C|A,B)")
-# prD = bn.fit.barchart(bn.actual$D, main = "P(D|B)")
-# prE = bn.fit.barchart(bn.actual$E, main = "P(E|B)")
-# prG = bn.fit.barchart(bn.actual$G, main = "P(G|E)")
-# prH = bn.fit.barchart(bn.actual$H, main = "P(H|C,D)")
+
 
 
 # It goes through from i = min to max.number.of.observations, calling SIDMean each time and 
@@ -239,7 +219,7 @@ print(h)
 
 #################### AVERAGE GRAPH ####################
 num.to.average = 1000
-num.samples = 100
+num.samples = 2500
 
 no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
@@ -296,10 +276,10 @@ dag.test = model2network("[A][B|A][C|A][D|B:C]")
 # graphviz.plot(dag.test)
 
 # Label levels
-A.lv = c("a", "-a")
-B.lv = c("b", "-b")
-C.lv = c("c", "-c")
-D.lv = c("d", "-d")
+A.lv = c("s", "-s")
+B.lv = c("g", "-g")
+C.lv = c("r", "-r")
+D.lv = c("w", "-w")
 
 # Arbitrarily define priors
 A.true    = 0.40
@@ -358,7 +338,7 @@ print(h)
 
 #################### AVERAGE GRAPH - FOUR NODE ####################
 num.to.average = 1000
-num.samples = 2500
+num.samples = 1500
 
 no_cores <- detectCores() - 1
 cl <- makeCluster(no_cores)
@@ -378,6 +358,25 @@ plot(net,vertex.label=V(net)$name, main=sprintf("Average DAG From %d Samples", n
      edge.label=NA, edge.width=3, vertex.color="white", vertex.size=25, autocurve.edges=T,
      label.color="black", layout = matrix(c(1,0,2,1,3,2,2,1), nrow=4, ncol=2))
 
+
+# Get rid of the heinous default colours when
+# displaying the probability distributions for each node
+myColours <- brewer.pal(6,"Greys")
+my.settings <- list(
+    superpose.polygon=list(col=myColours[1], border="transparent"),
+    strip.background=list(col=myColours[1]),
+    plot.polygon=list(col=myColours[2]),
+    strip.border=list(col="black")
+)
+trellis.par.set(my.settings)
+
+par(mfrow=c(2,2))
+# Display the probability distributions of each node with barcharts.
+prA = bn.fit.barchart(bn.fournode$A, main = "P(S)")
+prB = bn.fit.barchart(bn.fournode$B, main = "P(G|S)")
+prC = bn.fit.barchart(bn.fournode$C, main = "P(R|S)")
+prD = bn.fit.barchart(bn.fournode$D, main = "P(W|G:R)")
+par(mfrow=c(1,1))
 
 #################### EDGES PLOT DATA GEN ####################
 
@@ -422,3 +421,41 @@ legend("topright", inset=c(-0.5,0),
        col=c("black", "red", "blue", "green", "cyan", "yellow", "magenta", "grey50"))
 
 
+##################### EDGES DATA FOUR NODE ##################### 
+num.to.average = 500
+
+tf = function(num.samples){
+    graphs = parLapply(cl, seq(1, num.to.average), fun=function(i) meanGraph(bn.fournode, num.samples))
+    g = Reduce('+', graphs)/num.to.average
+    return(g)
+}
+no_cores <- detectCores() - 1
+cl <- makeCluster(no_cores)
+clusterExport(cl, list("meanGraph", "rbn", "rsmax2", "bn.fit", "bn.fournode", "num.samples"))
+stepslook = seq(from = 1, to = 7500, by = 100)
+dat = lapply(stepslook, FUN = tf)
+stopCluster(cl)
+
+d = lapply(dat, function(i) c(i))
+d = sapply(d, function(i) unlist(i))
+
+# dat[[20]]
+# d[,20]
+# matplot(stepslook, t(d), type='l', col='grey50', lty=1, ylim=c(0,1))
+
+
+par(mar=c(5.1, 4.1, 4.1, 10), xpd=TRUE)
+
+plot(d[5,] ~ stepslook, type='l', col="magenta", xlab="Samples", ylab="Confidence", main="Confidence in Edges by Number of Samples")
+points(d[9,] ~ stepslook, type='l', col="red")
+points(d[14,] ~ stepslook, type='l', col="blue")
+points(d[15,] ~ stepslook, type='l', col="green")
+
+matpoints(stepslook, t(d[-c(5,9,14,15),]), type='l', col='grey50', lty=1, ylim=c(0,1))
+
+
+legend("topright", inset=c(-0.5,0),
+       c("S -> G", "S -> R", "G -> W", "R -> W", "False Edges"),
+       lty=1,
+       lwd=1,
+       col=c("magenta", "red", "blue", "green", "grey50"))
